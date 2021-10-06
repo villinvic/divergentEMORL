@@ -1,0 +1,4 @@
+name, lower_bound, higher_bound
+"velocity", 1e-3, 2e-3
+"movement", 1e-3, 2e-3
+"win", 1.0, 1.1
