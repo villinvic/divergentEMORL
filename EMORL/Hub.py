@@ -21,6 +21,7 @@ class Hub(Default, Logger):
     def __init__(self, ip='127.0.0.1', ckpt=''):
         super(Hub, self).__init__()
         dummy_env = Game()
+        self.max_entropy = np.log(dummy_env.action_dim)
 
         self.running_instance_id = datetime.datetime.now().strftime("EMORL_%Y-%m-%d_%H-%M")
         self.logger.info("Hub started at" + ip)
@@ -180,7 +181,10 @@ class Hub(Default, Logger):
         for pop in [self.population, self.offspring_pool]:
             for individual in pop:
                 for batch_index, batch in enumerate(self.sampled_trajectories):
-                    self.policy_distributions[index, batch_index, :, :, :] = individual.probabilities_for(batch)
+                    if individual.mean_entropy < self.min_entropy_ratio * self.max_entropy:
+                        self.policy_distributions[index, batch_index, :, :, :] = 0.
+                    else:
+                        self.policy_distributions[index, batch_index, :, :, :] = individual.probabilities_for(batch[:, :-1])
                 index += 1
 
         for individual_index in range(self.pop_size+self.n_offspring):
