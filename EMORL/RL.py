@@ -429,7 +429,7 @@ class AC(tf.keras.Model, Default):
         self.V.v.set_weights(params['value_head'])
 
     @tf.function
-    def get_distrib(self, states):
+    def get_distribution(self, states):
         with tf.device("/gpu:{}".format(0)):
             x = self.dense_1(states)
             x = self.genotype['brain'].policy.get_probs(x)

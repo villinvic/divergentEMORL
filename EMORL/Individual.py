@@ -62,13 +62,8 @@ class Individual:
             self.mean_entropy = np.inf
             self.performance = 0
 
-    @tf.function
     def probabilities_for(self, states):
-        with tf.device("/gpu:{}".format(0)):
-            p = self.genotype['brain'].policy.get_probs(states)
-        return p
-
-
+        return self.genotype['brain'].get_distribution(states)
 
     def perturb(self):
         self.genotype.perturb()
