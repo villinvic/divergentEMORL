@@ -119,9 +119,14 @@ class Hub(Default, Logger):
     def __call__(self):
         try:
             while True:
+                self.logger.info('------| Starting Generation %d |------' %self.population.checkpoint_index)
+                self.logger.info('Making offspring...')
                 self.make_offspring()
+                self.logger.info('Training offspring...')
                 self.train_offspring()
+                self.logger.info('Computing uniqueness...')
                 self.compute_uniqueness()
+                self.logger.info('Selecting...')
                 self.select()
                 self.population.checkpoint_index += 1
                 self.save()

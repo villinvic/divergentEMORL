@@ -428,8 +428,12 @@ class AC(tf.keras.Model, Default):
             dense.set_weights(dense_layer_weights)
         self.V.v.set_weights(params['value_head'])
 
-
-
+    @tf.function
+    def get_distrib(self, states):
+        with tf.device("/gpu:{}".format(0)):
+            x = self.dense_1(states)
+            x = self.genotype['brain'].policy.get_probs(x)
+        return x
 
     @tf.function
     def init_body(self, lstm):
