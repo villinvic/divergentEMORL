@@ -39,7 +39,7 @@ class Population:
 
     def initialize(self, trainable=False):
         for ID in range(self.size):
-            self.individuals[ID] = Individual(ID, *self.dims, trainable=trainable)
+            self.individuals[ID] = Individual(ID, *self.dims, [], trainable=trainable)
 
     def __repr__(self):
         return self.individuals.__repr__()
