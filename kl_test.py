@@ -7,7 +7,7 @@ for d in full_dim[:-1]:
     amount *= d
 
 x = np.random.random(full_dim)
-y = x
+y = np.random.random(full_dim)**10
 x /= np.sum(x, axis=4)[:,:,:,:,np.newaxis]
 y /= np.sum(y, axis=4)[:,:,:,:,np.newaxis]
 
