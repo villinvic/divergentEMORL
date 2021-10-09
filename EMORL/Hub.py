@@ -219,6 +219,7 @@ class Hub(Default, Logger):
                 selected.extend(ranked_by_uniqueness)
             else:
                 selected.extend(frontiers[frontier_index])
+            frontier_index += 1
 
         for new_index, individual_index in enumerate(selected):
             if individual_index < self.pop_size:
