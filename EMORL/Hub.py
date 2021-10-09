@@ -155,23 +155,22 @@ class Hub(Default, Logger):
     def train_offspring(self):
         # Train each individuals for x minutes, 1 by 1, on the trainer (can be the Hub, with GPU)
         for index in range(self.n_offspring):
+            self.pub_params(index)
+            last_pub_time = time()
             self.reset_eval_queue()
             start_time = time()
             while time() - start_time < self.train_time:
-                self.pub_params(index)
-                last_pub_time = time()
-                while True:
-                    self.recv_training_data()
-                    perf = self.train(index)
-                    if perf is not None:
-                        self.eval_queue[self.eval_index % len(self.eval_queue)] = perf
-                        self.eval_index = 0
+                self.recv_training_data()
+                perf = self.train(index)
+                if perf is not None:
+                    self.eval_queue[self.eval_index % len(self.eval_queue)] = perf
+                    self.eval_index = 0
 
-                    current = time()
-                    if current - last_pub_time > 10:
-                        print('pub', index)
-                        self.pub_params(index)
-                        last_pub_time = current
+                current = time()
+                if current - last_pub_time > 10:
+                    print('pub', index)
+                    self.pub_params(index)
+                    last_pub_time = current
 
             # use recent training eval for selection
             self.offspring_pool[index].performance = np.nanmean(self.eval_queue)
