@@ -214,9 +214,9 @@ class Hub(Default, Logger):
         selected = []
         frontier_index = 0
         while len(selected) < self.pop_size:
-            if len(frontiers[frontier_index]) > self.pop_size - len(selected):
-                ranked_by_uniqueness = np.array(list(sorted(frontiers[frontier_index],
-                                                            key=lambda index: self.perf_and_uniqueness[1, index, 0])))[self.pop_size - len(selected):]
+            if len(frontiers[frontier_index])+len(selected) > self.pop_size:
+                ranked_by_uniqueness = list(sorted(frontiers[frontier_index],
+                                                            key=lambda index: self.perf_and_uniqueness[1, index, 0]))[len(selected)-self.pop_size:]
                 selected.extend(ranked_by_uniqueness)
             else:
                 selected.extend(frontiers[frontier_index])
