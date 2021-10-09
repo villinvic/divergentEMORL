@@ -51,8 +51,8 @@ class Population:
         self.read_pickled_v(self.individuals[:self.size], params)
 
     def save(self, path):
-        for individual in self:
-            with open(path + individual.name.get() + '.pkl',
+        for index, individual in enumerate(self):
+            with open(path + str(index) + '.pkl',
                       'wb+') as f:
                 pickle.dump(individual.get_all(), f)
 
