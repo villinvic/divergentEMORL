@@ -432,7 +432,7 @@ class AC(tf.keras.Model, Default):
     def get_distribution(self, states):
         with tf.device("/gpu:{}".format(0)):
             x = self.dense_1(states)
-            x = self.genotype['brain'].policy.get_probs(x)
+            x = self.policy.get_probs(x)
         return x
 
     @tf.function
