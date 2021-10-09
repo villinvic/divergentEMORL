@@ -199,7 +199,7 @@ class Hub(Default, Logger):
                 if individual_index != individual2_index:
                     distance += kl_divergence(self.policy_distributions[individual_index],
                                                self.policy_distributions[individual2_index])
-            distance /= (self.pop_size+self.n_offspring-1)
+            distance /= (self.pop_size+self.n_offspring-1) * self.BATCH_SIZE * self.TRAJECTOR_LENGTH
             self.perf_and_uniqueness[1, individual_index, 0] = distance
 
     def select(self):

@@ -14,7 +14,7 @@ class Individual:
         self.genotype = Genotype(input_dim, output_dim, trainable=trainable)
         self.mean_entropy = np.inf
 
-        self.performance = 0
+        self.performance = -np.inf
         self.generation = 0
 
 
