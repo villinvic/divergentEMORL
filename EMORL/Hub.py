@@ -243,11 +243,6 @@ class Hub(Default, Logger):
         self.logger.info('Saving population and parameters...')
         ckpt_path = 'checkpoints/' + self.running_instance_id + '/'
         full_path = ckpt_path + 'ckpt_' + str(self.population.checkpoint_index) + '/'
-        if not os.path.exists(full_path):
-            try:
-                os.makedirs(full_path)
-            except OSError as exc:
-                print(exc)
 
         # plot scores (perf in function of kl, gene values, behavior stats...)
         self.population.save(full_path)

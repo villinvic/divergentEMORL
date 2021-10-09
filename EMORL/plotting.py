@@ -1,7 +1,10 @@
 import matplotlib.pyplot as plt
+import os
 
 
 def plot_stats(perf_and_uniqueness, selected, new_pop, path):
+    plt.clf()
+
     selected_set = set(selected)
     all_indexes = set(range(len(perf_and_uniqueness)))
     not_selected = all_indexes-selected_set
@@ -32,4 +35,10 @@ def plot_stats(perf_and_uniqueness, selected, new_pop, path):
     plt.ylabel('r$\zeta_{kl}(\pi)$')
     plt.legend()
     plt.draw()
+
+    if not os.path.exists(path):
+        try:
+            os.makedirs(path)
+        except OSError as exc:
+            print(exc)
     plt.savefig(path+'scatter.png')
