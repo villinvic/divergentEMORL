@@ -466,20 +466,19 @@ class AC(tf.keras.Model, Default):
                     c += len(parents[0]['lstm'][i])
 
         for i in range(len(parents[0]['dense_1'])):
-            for j in range(len(parents[0]['dense_1'][i])):
-                if parents[0]['dense_1'][i][j].ndim > 1 :
-                    for k in range(len(parents[0]['dense_1'][i][j])):
-                            if c > cross_point:
-                                parents[0]['dense_1'][i][j][k][:] = parents[1]['dense_1'][i][j][k]
-                            elif c + len(parents[0]['dense_1'][i][j][k]) >= cross_point:
-                                parents[0]['dense_1'][i][j][k][cross_point-c:] = parents[1]['dense_1'][i][j][k][cross_point-c:]
-                            c += len(parents[0]['dense_1'][i][j][k])
-                else:
+            if parents[0]['dense_1'][i].ndim > 1:
+                for j in range(len(parents[0]['dense_1'][i])):
                     if c > cross_point:
                         parents[0]['dense_1'][i][j][:] = parents[1]['dense_1'][i][j]
                     elif c + len(parents[0]['dense_1'][i][j]) >= cross_point:
                         parents[0]['dense_1'][i][j][cross_point - c:] = parents[1]['dense_1'][i][j][cross_point - c:]
                     c += len(parents[0]['dense_1'][i][j])
+            else:
+                if c > cross_point:
+                    parents[0]['dense_1'][i][:] = parents[1]['dense_1'][i]
+                elif c + len(parents[0]['dense_1'][i]) >= cross_point:
+                    parents[0]['dense_1'][i][cross_point - c:] = parents[1]['dense_1'][i][cross_point - c:]
+                c += len(parents[0]['dense_1'][i])
 
         for i in range(len(parents[0]['actor_core'])):
             for j in range(len(parents[0]['actor_core'][i])):
