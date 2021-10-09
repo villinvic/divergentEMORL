@@ -40,7 +40,7 @@ class Hub(Default, Logger):
         self.traj_index = 0
         self.policy_distributions = np.zeros((self.pop_size+self.n_offspring, self.n_traj_ref, self.BATCH_SIZE,
                                               self.TRAJECTORY_LENGTH-1, dummy_env.action_dim), dtype=np.float32)
-        self.perf_and_uniqueness = np.zeros((2, pop_size+self.n_offspring), dtype=np.float32)
+        self.perf_and_uniqueness = np.zeros((2, self.pop_size+self.n_offspring), dtype=np.float32)
 
         self.eval_queue = np.full((100,), fill_value=np.nan, dtype=np.float32)
         self.eval_index = 0
