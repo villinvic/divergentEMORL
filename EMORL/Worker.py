@@ -80,8 +80,7 @@ class Worker(Default):
             self.play_trajectory()
             self.send_exp()
             c += 1
-            if c % 20 == 0:
-                self.get_params()
+            self.get_params()
 
 
 if __name__ == '__main__':
