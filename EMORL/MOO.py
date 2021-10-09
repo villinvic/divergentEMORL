@@ -19,7 +19,7 @@ def is_dominated(x_scores, y_scores, epsilon):
 
 def argsort_with_order(seq):
 
-    seqq = np.concatenate([seqq[:, np.newaxis] for seqq in seq[:,:,0]], axis=1)
+    seqq = np.concatenate([seqq[:, np.newaxis] for seqq in seq], axis=1)
 
     names_l = [str(i) for i in range(len(seq))] # +1
     f = ', '.join(['f8' for _ in range(len(seq))]) # +1
