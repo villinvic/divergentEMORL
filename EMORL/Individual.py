@@ -1,5 +1,4 @@
 import numpy as np
-import tensorflow as tf
 
 from EMORL.Behavior import Behavior
 from EMORL.Genotype import Genotype
