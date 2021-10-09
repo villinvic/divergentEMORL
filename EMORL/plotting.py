@@ -6,21 +6,21 @@ def plot_stats(perf_and_uniqueness, selected, new_pop, path):
     all_indexes = set(range(len(perf_and_uniqueness)))
     not_selected = all_indexes-selected_set
 
-    cases = {'new_selected' : set(),
-    'old_selected' : set(),
-    'new_discarded' : set(),
-    'old_discarded' : set(),
+    cases = {'new selected' : set(),
+    'old selected' : set(),
+    'new discarded' : set(),
+    'old discarded' : set(),
     }
     for x in selected:
         if x < new_pop.size:
-            cases['old_selected'].add(x)
+            cases['old selected'].add(x)
         else:
-            cases['new_selected'].add(x)
+            cases['new selected'].add(x)
     for x in not_selected:
         if x < new_pop.size:
-            cases['old_discarded'].add(x)
+            cases['old discarded'].add(x)
         else:
-            cases['new_discarded'].add(x)
+            cases['new discarded'].add(x)
 
     plt.style.use(['science', 'scatter', 'grid'])
 
