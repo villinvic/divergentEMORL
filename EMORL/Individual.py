@@ -1,6 +1,9 @@
 import numpy as np
+import tensorflow as tf
+
 from EMORL.Behavior import Behavior
 from EMORL.Genotype import Genotype
+
 
 
 class Individual:
@@ -11,6 +14,11 @@ class Individual:
         self.behavior = Behavior(behavior_categories)
         self.genotype = Genotype(input_dim, output_dim, trainable=trainable)
         self.mean_entropy = np.inf
+
+        self.performance = 0
+        self.generation = 0
+
+
 
     def get_arena_genes(self):
         return {
@@ -45,9 +53,22 @@ class Individual:
     def inerit_from(self, *other_individuals):
         if len(other_individuals) == 1:
             self.genotype.set_params(other_individuals[0].genotype.get_params(trainable=True), trainable=True)
+            self.mean_entropy = other_individuals[0].mean_entropy
+            self.performance = other_individuals[0].performance
+            self.generation = other_individuals[0].generation
         elif len(other_individuals) == 2:
             self.genotype.set_params(other_individuals[0].genotype.crossover(other_individuals[1].genotype),
                                      trainable=True)
+            self.mean_entropy = np.inf
+            self.performance = 0
+
+    @tf.function
+    def probabilities_for(self, states):
+        with tf.device("/gpu:{}".format(0)):
+            p = self.genotype['brain'].policy.get_probs(states)
+        return p
+
+
 
     def perturb(self):
         self.genotype.perturb()

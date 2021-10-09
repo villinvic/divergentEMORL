@@ -59,9 +59,10 @@ class Rewards:
         #self['velocity'][mask] = 0.
 
         self.values[:, :] = np.sum([self[event]*reward_shape[event]/state_scale for event, state_scale in self.base.items()], axis=0)
-        #self.values[:, :] = (1.0 - reward_shape['negative_scale']) * np.maximum(total, 0.) + total
 
-        return self.values
+        performance = np.mean(np.sum([self[event]*reward_shape[event]/self.base[event] for event in self.main], axis=0))
+
+        return self.values, performance
 
 
 

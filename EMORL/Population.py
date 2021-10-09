@@ -19,9 +19,6 @@ class Population:
         self.to_serializable_v = np.vectorize(lambda individual: individual.get_all())
         self.read_pickled_v = np.vectorize(lambda individual, x: individual.set_all(x))
 
-    def ranking(self):
-        return ND_sort(self.individuals)
-
     def __getitem__(self, item):
         return self.individuals[item]
 
@@ -40,9 +37,9 @@ class Population:
         else:
             raise StopIteration
 
-    def initialize(self):
+    def initialize(self, trainable=False):
         for ID in range(self.size):
-            self.individuals[ID] = Individual(ID, *self.dims)
+            self.individuals[ID] = Individual(ID, *self.dims, trainable=trainable)
 
     def __repr__(self):
         return self.individuals.__repr__()

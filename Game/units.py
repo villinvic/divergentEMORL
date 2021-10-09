@@ -12,7 +12,7 @@ class Unit:
 
 class Soldier:
     hp = 10
-    speed = 11
+    speed = 1
 
 
     def __init__(self):

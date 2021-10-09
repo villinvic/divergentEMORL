@@ -277,7 +277,7 @@ class AC(tf.keras.Model, Default):
                                      axis=2)
         self.pattern = tf.expand_dims([tf.fill((self.TRAJECTORY_LENGTH-1,), i) for i in range(self.BATCH_SIZE)], axis=2)
 
-    def train(self, training_params, states, actions, rewards, probs, gpu):
+    def train(self, log_name, training_params, states, actions, rewards, probs, gpu):
         # do some stuff with arrays
         # print(states, actions, rewards, dones)
         # Set both networks with corresponding initial recurrent state
@@ -288,18 +288,18 @@ class AC(tf.keras.Model, Default):
 
         print(v_loss, max_entropy, mean_entropy, grad_norm)
 
-        tf.summary.scalar(name="/v_loss", data=v_loss)
-        tf.summary.scalar(name="/min_entropy", data=min_entropy)
-        tf.summary.scalar(name="/max_entropy", data=max_entropy)
-        tf.summary.scalar(name="/mean_entropy", data=mean_entropy)
-        tf.summary.scalar(name="/ent_scale", data=training_params['entropy_cost'])
-        tf.summary.scalar(name="/gamma", data=training_params['gamma'])
-        tf.summary.scalar(name="/learning_rate", data=training_params['learning_rate'])
-        tf.summary.scalar(name="/min_logp", data=min_logp)
-        tf.summary.scalar(name="/max_logp", data=max_logp)
-        tf.summary.scalar(name="/grad_norm", data=grad_norm)
+        tf.summary.scalar(name=log_name+"/v_loss", data=v_loss)
+        tf.summary.scalar(name=log_name+"/min_entropy", data=min_entropy)
+        tf.summary.scalar(name=log_name+"/max_entropy", data=max_entropy)
+        tf.summary.scalar(name=log_name+"/mean_entropy", data=mean_entropy)
+        tf.summary.scalar(name=log_name+"/ent_scale", data=training_params['entropy_cost'])
+        tf.summary.scalar(name=log_name+"/gamma", data=training_params['gamma'])
+        tf.summary.scalar(name=log_name+"/learning_rate", data=training_params['learning_rate'])
+        tf.summary.scalar(name=log_name+"/min_logp", data=min_logp)
+        tf.summary.scalar(name=log_name+"/max_logp", data=max_logp)
+        tf.summary.scalar(name=log_name+"/grad_norm", data=grad_norm)
         #tf.summary.scalar(name="misc/distance", data=tf.reduce_mean(states[:, :, -1]))
-        tf.summary.scalar(name="/reward", data=tf.reduce_sum(tf.reduce_mean(rewards, axis=0)))
+        tf.summary.scalar(name=log_name+"/reward", data=tf.reduce_sum(tf.reduce_mean(rewards, axis=0)))
 
         return mean_entropy
 
@@ -464,6 +464,22 @@ class AC(tf.keras.Model, Default):
                     elif c + len(parents[0]['lstm'][i]) >= cross_point:
                         parents[0]['lstm'][i][cross_point - c:] = parents[1]['lstm'][i][cross_point - c:]
                     c += len(parents[0]['lstm'][i])
+
+        for i in range(len(parents[0]['dense_1'])):
+            for j in range(len(parents[0]['dense_1'][i])):
+                if parents[0]['dense_1'][i][j].ndim > 1 :
+                    for k in range(len(parents[0]['dense_1'][i][j])):
+                            if c > cross_point:
+                                parents[0]['dense_1'][i][j][k][:] = parents[1]['dense_1'][i][j][k]
+                            elif c + len(parents[0]['dense_1'][i][j][k]) >= cross_point:
+                                parents[0]['dense_1'][i][j][k][cross_point-c:] = parents[1]['dense_1'][i][j][k][cross_point-c:]
+                            c += len(parents[0]['dense_1'][i][j][k])
+                else:
+                    if c > cross_point:
+                        parents[0]['dense_1'][i][j][:] = parents[1]['dense_1'][i][j]
+                    elif c + len(parents[0]['dense_1'][i][j]) >= cross_point:
+                        parents[0]['dense_1'][i][j][cross_point - c:] = parents[1]['dense_1'][i][j][cross_point - c:]
+                    c += len(parents[0]['dense_1'][i][j])
 
         for i in range(len(parents[0]['actor_core'])):
             for j in range(len(parents[0]['actor_core'][i])):

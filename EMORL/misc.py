@@ -13,3 +13,6 @@ def uniform_with_hole(low=55, high=200):
     x = np.cos(angle) * r
     y = np.sin(angle) * r
     return np.array([x,y], dtype=np.float32)
+
+def kl_divergence(a, b):
+    np.sum(a * np.log((a+1e-8)) - np.log((b+1e-8)))
