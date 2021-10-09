@@ -163,6 +163,7 @@ class Hub(Default, Logger):
     def train_offspring(self):
         # Train each individuals for x minutes, 1 by 1, on the trainer (can be the Hub, with GPU)
         for index in range(self.n_offspring):
+            self.logger.log('Training offspring n°%d...' %index)
             self.pub_params(index)
             last_pub_time = time()
             self.reset_eval_queue()
@@ -175,8 +176,7 @@ class Hub(Default, Logger):
                     self.eval_index += 1
 
                 current = time()
-                if current - last_pub_time > 10:
-                    print('pub', index)
+                if current - last_pub_time > 5:
                     self.pub_params(index)
                     last_pub_time = current
 
