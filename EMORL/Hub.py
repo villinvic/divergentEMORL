@@ -112,7 +112,7 @@ class Hub(Default, Logger):
 
     def sample_trajectory(self, sample):
         if self.traj_index < self.n_traj_ref or np.random.random() < self.save_traj_batch_chance:
-            self.sampled_trajectories[self.traj_index, :, :, :] = sample
+            self.sampled_trajectories[self.traj_index%self.n_traj_ref, :, :, :] = sample
             self.traj_index += 1
 
     def __call__(self):
