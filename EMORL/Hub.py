@@ -40,7 +40,7 @@ class Hub(Default, Logger):
         self.traj_index = 0
         self.policy_distributions = np.zeros((self.pop_size+self.n_offspring, self.n_traj_ref, self.BATCH_SIZE,
                                               self.TRAJECTORY_LENGTH-1, dummy_env.action_dim), dtype=np.float32)
-        self.perf_and_uniqueness = np.zeros((2, self.pop_size+self.n_offspring), dtype=np.float32)
+        self.perf_and_uniqueness = np.zeros((2, self.pop_size+self.n_offspring, 1), dtype=np.float32)
 
         self.eval_queue = np.full((100,), fill_value=np.nan, dtype=np.float32)
         self.eval_index = 0
@@ -199,13 +199,13 @@ class Hub(Default, Logger):
                     distance += kl_divergence(self.policy_distributions[individual_index],
                                                self.policy_distributions[individual2_index])
             distance /= (self.pop_size+self.n_offspring-1)
-            self.perf_and_uniqueness[1, individual_index] = distance
+            self.perf_and_uniqueness[1, individual_index, 0] = distance
 
     def select(self):
         index = 0
         for pop in [self.population, self.offspring_pool]:
             for individual in pop:
-                self.perf_and_uniqueness[0, index] = individual.performance
+                self.perf_and_uniqueness[0, index, 0] = individual.performance
                 index += 1
 
         frontiers = ND_sort(self.perf_and_uniqueness)
@@ -214,7 +214,7 @@ class Hub(Default, Logger):
         while len(selected) < self.pop_size:
             if len(frontiers[frontier_index]) > self.pop_size - len(selected):
                 ranked_by_uniqueness = np.array(list(sorted(frontiers[frontier_index],
-                                                            key=lambda index: self.perf_and_uniqueness[1, index])))[self.pop_size - len(selected):]
+                                                            key=lambda index: self.perf_and_uniqueness[1, index, 0])))[self.pop_size - len(selected):]
                 selected.extend(ranked_by_uniqueness)
             else:
                 selected.extend(frontiers[frontier_index])
@@ -227,7 +227,7 @@ class Hub(Default, Logger):
 
         # get stats of selection...
         full_path = 'checkpoints/' + self.running_instance_id + '/ckpt_' + str(self.population.checkpoint_index) + '/'
-        plot_stats(self.perf_and_uniqueness, selected, self.population, full_path)
+        plot_stats(self.perf_and_uniqueness[:,:,0], selected, self.population, full_path)
 
 
     def load(self, ckpt_path):
