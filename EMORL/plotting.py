@@ -27,7 +27,9 @@ def plot_stats(perf_and_uniqueness, selected, new_pop, path):
 
     plt.style.use(['science', 'scatter', 'grid'])
 
+    print(selected)
     for case, indexes in cases.items():
+        print(case, indexes)
         plt.scatter(perf_and_uniqueness[1, list(indexes)], perf_and_uniqueness[0, list(indexes)], label=case, marker='v')
 
 
