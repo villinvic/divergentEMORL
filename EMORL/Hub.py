@@ -28,11 +28,12 @@ class Hub(Default, Logger):
 
         self.logger.info("Population Initialization started...")
         self.population = Population(self.pop_size, dummy_env.state_dim, dummy_env.action_dim)
+        self.population.initialize(trainable=True)
         if ckpt:
             self.load(ckpt)
         self.offspring_pool = Population(self.n_offspring, dummy_env.state_dim, dummy_env.action_dim)
         # Init pop
-        self.population.initialize(trainable=True)
+
         self.offspring_pool.initialize(trainable=True)
 
         # tajectories used to compute behavior distance
