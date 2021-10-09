@@ -19,6 +19,9 @@ class Population:
         self.to_serializable_v = np.vectorize(lambda individual: individual.get_all())
         self.read_pickled_v = np.vectorize(lambda individual, x: individual.set_all(x))
 
+        self.stats = {
+        }
+
     def __getitem__(self, item):
         return self.individuals[item]
 
@@ -55,7 +58,6 @@ class Population:
             with open(path + str(index) + '.pkl',
                       'wb+') as f:
                 pickle.dump(individual.get_all(), f)
-
         with open(path + 'population.params', 'w') as json_file:
             json.dump({
             "size": int(self.size),

@@ -15,4 +15,4 @@ def uniform_with_hole(low=55, high=200):
     return np.array([x,y], dtype=np.float32)
 
 def kl_divergence(a, b):
-    return np.sum(a * np.log((a+1e-8)) - np.log((b+1e-8)))
+    return np.sum(a * (np.log(a+1e-8) - np.log(b+1e-8)))
