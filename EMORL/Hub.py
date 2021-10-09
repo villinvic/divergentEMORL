@@ -96,7 +96,7 @@ class Hub(Default, Logger):
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
 
                 self.offspring_pool[index].mean_entropy = \
-                    self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].genotype['learning'],states, actions, rews, probs, 0)
+                    self.offspring_pool[index].genotype['brain'].train(str(index), self.offspring_pool[index].genotype['learning'],states, actions, rews, probs, 0)
             self.train_cntr += 1
             tf.summary.experimental.set_step(self.train_cntr)
 
@@ -136,9 +136,9 @@ class Hub(Default, Logger):
 
         for offspring, parents in zip(self.offspring_pool, parents_pairs):
             if np.random.random() < self.crossover_rate:
-                offspring.inerit_from(*parents)
+                offspring.inerit_from(*self.population[parents])
             else:
-                offspring.inerit_from(parents[0])
+                offspring.inerit_from(self.population[parents[0]])
 
             if np.random.random() < self.mutation_rate:
                 offspring.perturb()
