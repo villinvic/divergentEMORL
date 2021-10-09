@@ -14,6 +14,7 @@ from EMORL.Individual import Individual
 
 class Worker(Default):
     def __init__(self, render=False, hub_ip='127.0.0.1'):
+        self.render = render
         super(Worker, self).__init__()
         self.game = Game(render)
         self.player = Individual(-1, self.game.state_dim, self.game.action_dim, [])
@@ -53,6 +54,8 @@ class Worker(Default):
     def play_trajectory(self):
         win = 0
         for index in range(self.TRAJECTORY_LENGTH):
+            if self.render:
+                self.game.render()
             s = self.game.state / self.game.scales
             action_id, distribution, hidden_h, hidden_c = self.player.policy(s)
             self.trajectory['state'][index, :] = s

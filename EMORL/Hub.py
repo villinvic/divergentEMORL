@@ -17,7 +17,7 @@ class Hub(Default):
         super(Hub, self).__init__()
         dummy_env = Game()
         self.agent = Individual(0, dummy_env.state_dim, dummy_env.action_dim, [], trainable=True)
-        self.rewards = Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.n_cyclones)
+        self.rewards = Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.n_cyclones, dummy_env.n_exits)
 
         c = zmq.Context()
         self.blob_socket = c.socket(zmq.PUB)
@@ -65,7 +65,6 @@ class Hub(Default):
             probs = np.float32(np.stack(trajectory[:, 2], axis=0)[:, :-1])
             wins = np.float32(np.stack(trajectory[:, 3], axis=0)[:, :-1])
             rews = self.rewards.compute(states, self.agent.genotype['experience'], wins)
-            print(rews, np.max(states), np.argmax(states))
             # Train
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
 

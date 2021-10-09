@@ -24,27 +24,31 @@ class Cyclone:
 
 class Game(Default):
     cyclone_sizes = np.array([20, 25., 30., 50., 70.])
-    cyclone_probs = np.array([0.30, 0.35, 0.1 , 0.2, 0.05])
+    cyclone_probs = np.array([0.1, 0.15, 0.35 , 0.35, 0.05])
 
     directions = np.array([(0., 0.), (-1., 0.), (-0.707, 0.707), (0., 1.), (0.707, 0.707), (1., 0.),
                            (0.707, -0.707), (0., -1.), (-0.707, -0.707)])
 
     def __init__(self, render=False, human=False):
-        self.steps = 0
         self.human = human
         super(Game, self).__init__()
-        self.state = np.zeros((self.n_cyclones*6 + 4,), dtype=np.float32)
+        self.state = np.zeros(((self.n_cyclones+self.n_exits)*6 + 4*2 + 1,), dtype=np.float32)
 
         self.indexes = {
-            'player_x': self.n_cyclones * 6,
-            'player_y': self.n_cyclones * 6 + 1,
-            'inertia_x': self.n_cyclones * 6 + 2,
-            'inertia_y': self.n_cyclones * 6 + 3,
+            'player_x': (self.n_cyclones+self.n_exits) * 6,
+            'player_y': (self.n_cyclones+self.n_exits) * 6 + 1,
+            'inertia_x': (self.n_cyclones+self.n_exits) * 6 + 2,
+            'inertia_y': (self.n_cyclones+self.n_exits) * 6 + 3,
     }
-        self.cyclones = np.array([Cyclone(pos=uniform_with_hole(high=self.area_size),
+        self.cyclones = np.array( [Cyclone(pos=uniform_with_hole(high=self.area_size),
                                           ray=np.random.choice(Game.cyclone_sizes, p=Game.cyclone_probs),
                                           deadly_fraction=np.random.uniform(self.min_deadly_fraction, self.max_deadly_fraction),
-                                          nature= 1 if np.random.random()<0.33 else -1,
+                                          nature=1,
+                                          power=log_uniform(self.min_power, self.max_power)) for _ in range(self.n_exits)] +
+            [Cyclone(pos=uniform_with_hole(high=self.area_size),
+                                          ray=np.random.choice(Game.cyclone_sizes, p=Game.cyclone_probs),
+                                          deadly_fraction=np.random.uniform(self.min_deadly_fraction, self.max_deadly_fraction),
+                                          nature=-1,
                                           power=log_uniform(self.min_power, self.max_power)) for _ in range(self.n_cyclones)]
                                  + [Cyclone(pos=np.zeros((2,), dtype=np.float32), ray=self.area_size, deadly_fraction=0, nature=-1, power=self.base_gravity)])
         self.engine = PyGameEngine(self.area_size, self.cyclones, self.human) if render else None
@@ -60,20 +64,23 @@ class Game(Default):
         # (x_acc, y_acc, speed/slow)
 
         self.scales = []
-        for _ in range(self.n_cyclones):
+        for _ in range(self.n_cyclones+self.n_exits):
             self.scales += [self.area_size,  self.area_size, Game.cyclone_sizes[-1], Game.cyclone_sizes[-1]*self.max_deadly_fraction, 1., self.max_power]
 
-        self.scales += [self.area_size, self.area_size, self.max_inertia, self.max_inertia]
+        for _ in range(2):
+            self.scales += [self.area_size, self.area_size, self.max_inertia, self.max_inertia]
+        self.scales += [self.max_steps]
+
         self.scales = np.array(self.scales, dtype=np.float32)
 
         self.action_dim = len(self.directions)
         self.state_dim = len(self.state)
 
-    def is_done(self):
+    def is_out(self):
         return self.state[self.indexes['player_x']] ** 2 + self.state[self.indexes['player_y']] ** 2 >= self.area_size ** 2
 
     def is_timeout(self):
-        return self.steps > self.max_steps
+        return self.state[-1] > self.max_steps
 
     def step(self, action_id):
         angle = self.directions[action_id]
@@ -83,17 +90,17 @@ class Game(Default):
             else:
                 self.state[self.indexes[index]] = np.clip(self.state[self.indexes[index]] + angle[direction] * 0.25, -self.max_inertia, self.max_inertia)
 
+
+        self.state[(self.n_exits+self.n_cyclones)*6+4: -1] = self.state[(self.n_exits+self.n_cyclones)*6: -5]
         self.state[self.indexes['player_x']] += self.state[self.indexes['inertia_x']]
         self.state[self.indexes['player_y']] += self.state[self.indexes['inertia_y']]
 
-        if self.is_done():
-            return True, 1
-        if self.is_timeout():
+        if self.is_out() or self.is_timeout():
             return True, -1
         # test for cyclones
         for c in self.cyclones:
             if c.kills((self.state[self.indexes['player_x']], self.state[self.indexes['player_y']])):
-                return True, -1
+                return True, c.nature
             if c.has((self.state[self.indexes['player_x']], self.state[self.indexes['player_y']])):
                 dx = self.state[self.indexes['player_x']] - c.pos[0]
                 dy = self.state[self.indexes['player_y']] - c.pos[1]
@@ -105,7 +112,7 @@ class Game(Default):
                     self.state[self.indexes['inertia_y']] += np.clip(dy * c.nature * c.power, -self.max_inertia, self.max_inertia)
 
         # return state
-        self.steps += 1
+        self.state[-1] += 1
         return False, 0
 
     def reset(self):
@@ -132,7 +139,7 @@ if __name__ == '__main__':
     n_turns = 0
     while True:
         while not done:
-            state, done, win = g.step(action)
+            done, win = g.step(action)
             action = g.render()
             n_turns += 1
         g.reset()

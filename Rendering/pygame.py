@@ -1,9 +1,13 @@
+import os
+#os.environ["SDL_VIDEODRIVER"] = "dummy"
 import pygame
 import numpy as np
 import sys
 from pygame.locals import *
+import tensorflow as tf
+from PIL import Image
 
-BLUE  = (0, 0, 255)
+BLUE  = np.array([255, 255, 0])
 DANGER = (255, 0, 0)
 RED   = np.array([0, 255, 255])
 GREEN = np.array([255, 0, 255])
@@ -18,7 +22,7 @@ class Player(pygame.sprite.Sprite):
         random_color = np.random.choice(255, size=3)
         pygame.draw.circle(self.surface, random_color, (3,3), 3)
         self.rect = self.surface.get_rect()
-        self.rect.update(500-3, 500-3, 6, 6)
+        self.rect.update(400-3, 400-3, 6, 6)
 
     def draw(self, surface):
         surface.blit(self.surface, self.rect)
@@ -28,25 +32,34 @@ class Player(pygame.sprite.Sprite):
 
 
 class PyGameEngine:
-    FPS = 15
+    FPS = 30
 
     def __init__(self, area_size, cyclones, human=False):
         pygame.init()
         self.frames = pygame.time.Clock()
-        self.display = pygame.display.set_mode((1000,1000))
+        self.display = pygame.display.set_mode((800,800))
         self.display.fill(WHITE)
         self.player = Player()
         for c in cyclones[:-1]:
             color = GREEN if c.nature == 1 else RED
-            pygame.draw.circle(self.display, list(255-color*c.power*0.5), c.pos*2+500, c.ray*2)
+            pygame.draw.circle(self.display, list(255-color*c.power*0.5), c.pos*2+400, c.ray*2)
         for c in cyclones[:-1]:
-            pygame.draw.circle(self.display, DANGER, c.pos*2+500, c.deadly_ray*2)
-        pygame.draw.circle(self.display, BLACK, (500,500), area_size*2, width=1)
+            color = GREEN if c.nature == 1 else DANGER
+            pygame.draw.circle(self.display, color, c.pos*2+400, c.deadly_ray*2)
+        pygame.draw.circle(self.display, BLACK, (400,400), area_size*2, width=3)
 
         self.human = human
 
+        #self.img_state = pygame.surfarray.array3d(self.display)
+        #new_frame = 0.299 * self.img_state[:, :, 0] + 0.587 * self.img_state[:, :, 1] + 0.114 * self.img_state[:, :, 2]
+        #img = tf.image.resize(new_frame[:, :, np.newaxis], (160, 160), method='nearest').numpy().astype(
+        #    np.uint8)
+        #i = Image.fromarray(img[:,:,0], 'L')
+        #i.save('state.png')
+
+
     def update(self, x, y):
-        self.player.update(500+x*2, 500+y*2)
+        self.player.update(400+x*2, 400+y*2)
         self.player.draw(self.display)
         for event in pygame.event.get():
             if event.type == QUIT:
