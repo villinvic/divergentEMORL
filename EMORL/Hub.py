@@ -217,6 +217,11 @@ class Hub(Default, Logger):
             else:
                 self.population[new_index].inerit_from(self.offspring_pool[individual_index-self.pop_size])
 
+        # get stats of selection...
+        full_path = 'checkpoints/' + self.running_instance_id + '/ckpt_' + str(self.population.checkpoint_index) + '/'
+        plot_stats(self.perf_and_uniqueness, selected, self.population, full_path)
+
+
     def load(self, ckpt_path):
         self.logger.info('Loading checkpoint %s ...' % ckpt_path)
         self.population.load(ckpt_path)
@@ -236,9 +241,7 @@ class Hub(Default, Logger):
             except OSError as exc:
                 print(exc)
 
-
         # plot scores (perf in function of kl, gene values, behavior stats...)
-        plot_stats(self.population, full_path)
         self.population.save(full_path)
 
         _, dirs, _ = next(os.walk(ckpt_path))

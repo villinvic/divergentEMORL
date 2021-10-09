@@ -10,9 +10,7 @@ class Rewards:
     special = np.array([
     ])
 
-    main = np.array([
-        'win'
-    ])
+    main = 'win'
 
 
     def __init__(self, batch_size, trajectory_length, area_size, n_cyclones, n_exits):
@@ -41,7 +39,7 @@ class Rewards:
 
 
         self['velocity'] = ( np.abs(states[:, 1:, 6 * self.n_entities + 2]) - np.abs(states[:, :-1, 6 * self.n_entities + 2])+
-                           np.abs(states[:, 1:, 6 * self.n_entities + 3]) - np.abs(states[:, :-1, 6 * self.n_entities + 3])) * reward_shape['velocity']
+                           np.abs(states[:, 1:, 6 * self.n_entities + 3]) - np.abs(states[:, :-1, 6 * self.n_entities + 3]))
 
         self.dist[:, :] = (np.sqrt((states[:, 1:, 6 * self.n_entities]-states[:, 1:, 0])**2+(states[:, 1:, 6 * self.n_entities+1]-states[:, 1:, 1])**2))\
                - (np.sqrt((states[:, :-1, 6 * self.n_entities]-states[:, :-1, 0])**2+(states[:, :-1, 6 * self.n_entities+1]-states[:, :-1, 1])**2))
@@ -50,9 +48,9 @@ class Rewards:
             self.dist[:, :] = np.minimum(self.dist, (np.sqrt((states[:, 1:, 6 * self.n_entities]-states[:, 1:, 6*i])**2+(states[:, 1:, 6 * self.n_entities+1]-states[:, 1:, 6*i +1])**2))\
                - (np.sqrt((states[:, :-1, 6 * self.n_entities]-states[:, :-1, 6*i])**2+(states[:, :-1, 6 * self.n_entities+1]-states[:, :-1, 6*i+1])**2)))
 
-        self['movement'] = -self.dist * reward_shape['movement']
+        self['movement'] = -self.dist
 
-        self['win'][:, :] = base_rewards * reward_shape['win']
+        self['win'][:, :] = base_rewards
 
         #mask = reward_shape['win'] == 0.
         #self['movement'][mask] = 0.
@@ -60,7 +58,7 @@ class Rewards:
 
         self.values[:, :] = np.sum([self[event]*reward_shape[event]/state_scale for event, state_scale in self.base.items()], axis=0)
 
-        performance = np.mean(np.sum([self[event]*reward_shape[event]/self.base[event] for event in self.main], axis=0))
+        performance = np.mean(np.sum(base_rewards/self.base[self.main], axis=0))
 
         return self.values, performance
 
