@@ -45,3 +45,7 @@ def plot_stats(perf_and_uniqueness, selected, new_pop, path):
         except OSError as exc:
             print(exc)
     plt.savefig(path+'scatter.png')
+
+    plt.clf()
+
+    

@@ -36,11 +36,13 @@ class Individual:
     def get_all(self, trainable=True):
         return dict(
             id=self.id,
+            performance=self.performance,
             genotype=self.genotype.get_params(trainable=trainable),
         )
 
     def set_all(self, params, trainable=True):
         self.genotype.set_params(params['genotype'], trainable)
+        self.performance = params['performance']
 
     def policy(self, observation):
         if self.genotype['brain'] is None:

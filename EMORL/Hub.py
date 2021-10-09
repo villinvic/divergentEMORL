@@ -172,7 +172,7 @@ class Hub(Default, Logger):
                 perf = self.train(index)
                 if perf is not None:
                     self.eval_queue[self.eval_index % len(self.eval_queue)] = perf
-                    self.eval_index = 0
+                    self.eval_index += 1
 
                 current = time()
                 if current - last_pub_time > 10:
