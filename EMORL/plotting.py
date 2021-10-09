@@ -31,8 +31,8 @@ def plot_stats(perf_and_uniqueness, selected, new_pop, path):
         plt.scatter(perf_and_uniqueness[1, list(indexes)], perf_and_uniqueness[0, list(indexes)], label=case, marker='v')
 
 
-    plt.xlabel('r$\zeta_{perf}(\pi)$')
-    plt.ylabel('r$\zeta_{kl}(\pi)$')
+    plt.ylabel('r$\zeta_{perf}(\pi)$')
+    plt.xlabel('r$\zeta_{kl}(\pi)$')
     plt.legend()
     plt.draw()
 

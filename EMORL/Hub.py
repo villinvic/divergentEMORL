@@ -119,6 +119,7 @@ class Hub(Default, Logger):
     def __call__(self):
         try:
             while True:
+                self.population.checkpoint_index += 1
                 self.logger.info('------| Starting Generation %d |------' %self.population.checkpoint_index)
                 self.logger.info('Making offspring...')
                 self.make_offspring()
@@ -128,7 +129,7 @@ class Hub(Default, Logger):
                 self.compute_uniqueness()
                 self.logger.info('Selecting...')
                 self.select()
-                self.population.checkpoint_index += 1
+
                 self.save()
         except KeyboardInterrupt:
             pass
@@ -148,7 +149,7 @@ class Hub(Default, Logger):
 
             if np.random.random() < self.mutation_rate:
                 offspring.perturb()
-            offspring.generation = self.population.checkpoint_index + 1
+            offspring.generation = self.population.checkpoint_index
 
     def select_k(self):
         # for each individual, select k random (or nearest ?)  individual behavior stats as a landmark for divergence
