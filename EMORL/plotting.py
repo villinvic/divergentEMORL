@@ -35,7 +35,6 @@ def plot_stats(perf_and_uniqueness, selected, new_pop, path):
 
     plt.ylabel(r'$\zeta_{perf}(\pi)$')
     plt.xlabel(r'$\zeta_{kl}(\pi)$')
-    plt.xscale('log')
     plt.legend()
     plt.draw()
 

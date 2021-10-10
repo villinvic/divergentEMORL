@@ -184,7 +184,8 @@ class Hub(Default, Logger):
                 if perf is not None:
                     self.eval_queue[self.eval_index % len(self.eval_queue)] = perf
                     self.eval_index += 1
-
+                if self.population[index].mean_entropy < self.max_entropy * self.critical_entropy_ratio:
+                    break
                 current = time()
                 if current - last_pub_time > 5:
                     self.pub_params(index)
@@ -195,22 +196,26 @@ class Hub(Default, Logger):
 
     def compute_uniqueness(self):
         index = 0
+        failed_indexes = []
         for pop in [self.population, self.offspring_pool]:
             for individual in pop:
                 for batch_index, batch in enumerate(self.sampled_trajectories):
                     if individual.mean_entropy < self.min_entropy_ratio * self.max_entropy:
+                        individual.performance = -np.inf
                         self.policy_distributions[index, batch_index, :, :, :] = 0.
+                        failed_indexes.append(index)
                     else:
                         self.policy_distributions[index, batch_index, :, :, :] = individual.probabilities_for(batch[:, :-1])
                 index += 1
 
         for individual_index in range(self.pop_size+self.n_offspring):
             distance = 0
-            for individual2_index in range(self.pop_size+self.n_offspring):
-                if individual_index != individual2_index:
-                    distance += kl_divergence(self.policy_distributions[individual_index],
-                                               self.policy_distributions[individual2_index])
-            distance /= (self.pop_size+self.n_offspring-1) * self.BATCH_SIZE * (self.TRAJECTORY_LENGTH-1) * self.n_traj_ref
+            if individual_index not in failed_indexes:
+                for individual2_index in range(self.pop_size+self.n_offspring):
+                    if individual_index != individual2_index and individual2_index not in failed_indexes:
+                        distance += kl_divergence(self.policy_distributions[individual_index],
+                                                   self.policy_distributions[individual2_index])
+                distance /= (self.pop_size+self.n_offspring-1) * self.BATCH_SIZE * (self.TRAJECTORY_LENGTH-1) * self.n_traj_ref
             self.perf_and_uniqueness[1, individual_index, 0] = distance
 
     def select(self):

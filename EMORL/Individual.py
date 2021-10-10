@@ -61,7 +61,7 @@ class Individual:
             self.genotype.set_params(other_individuals[0].genotype.crossover(other_individuals[1].genotype),
                                      trainable=True)
             self.mean_entropy = np.inf
-            self.performance = 0
+            self.performance = -np.inf
 
     def probabilities_for(self, states):
         return self.genotype['brain'].get_distribution(states)
