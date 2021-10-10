@@ -292,7 +292,7 @@ class AC(tf.keras.Model, Default):
 
         tf.summary.scalar(name=log_name+"/v_loss", data=v_loss)
         tf.summary.scalar(name=log_name+"/min_entropy", data=min_entropy)
-        tf.summary.scalar(name=log_name+"/max_entropy", data=max_entropy)
+        tf.summary.scalar(name=log_name+"/max_entropy", data=policy_d)
         tf.summary.scalar(name=log_name+"/mean_entropy", data=mean_entropy)
         tf.summary.scalar(name=log_name+"/ent_scale", data=training_params['entropy_cost'])
         tf.summary.scalar(name=log_name+"/gamma", data=training_params['gamma'])
