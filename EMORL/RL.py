@@ -334,7 +334,7 @@ class AC(tf.keras.Model, Default):
 
                 ent = - tf.reduce_sum(tf.multiply(p_log, p), -1)
 
-                policy_distance = tf.add_n([self.compute_distil(landmark.policy.get_probs(landmark.dense_1(states)[:, :-1]), p)
+                policy_distance = tf.add_n([self.compute_distil(p, p)
                                for landmark in policy_landmarks]) / tf.cast(len(policy_landmarks), dtype=tf.float32)
 
 
