@@ -84,7 +84,7 @@ class Hub(Default, Logger):
         except zmq.ZMQError:
             pass
 
-    def train(self, index):
+    def train(self, index, landmarks):
         if len(self.exp) >= self.BATCH_SIZE:
             # Get experience from the queue
             trajectory = pd.DataFrame(self.exp[:self.BATCH_SIZE]).values
@@ -99,7 +99,7 @@ class Hub(Default, Logger):
 
             # landmark distributions
             self.landmark_policy_dist[:, :, :] = 0
-            for individual in self.select_k(index):
+            for individual in landmarks:
                 self.landmark_policy_dist[:, :] += individual.probabilities_for(states[:, :-1])
             # Train
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
@@ -177,9 +177,10 @@ class Hub(Default, Logger):
             last_pub_time = time()
             self.reset_eval_queue()
             start_time = time()
+            k_landmarks = self.select_k(index)
             while time() - start_time < self.train_time:
                 self.recv_training_data()
-                perf = self.train(index)
+                perf = self.train(index, k_landmarks)
                 if perf is not None:
                     self.eval_queue[self.eval_index % len(self.eval_queue)] = perf
                     self.eval_index += 1

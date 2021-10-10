@@ -334,16 +334,11 @@ class AC(tf.keras.Model, Default):
 
                 ent = - tf.reduce_sum(tf.multiply(p_log, p), -1)
 
-                policy_distance = 0 #self.compute_distil(policy_landmarks.policy.get_probs(policy_landmarks.dense_1(states)[:, :-1]), p)
-                    #tf.add_n([self.compute_distil(landmark.policy.get_probs(landmark.dense_1(states)[:, :-1]), p)
-                    #           for landmark in policy_landmarks]) / tf.cast(len(policy_landmarks), dtype=tf.float32)
-
-
                 taken_p_log = tf.gather_nd(p_log, indices, batch_dims=0)
 
                 p_loss = - tf.reduce_mean( tf.stop_gradient(rho_mu) * taken_p_log
                                            * tf.stop_gradient(targets[:, 1:]*gamma + rewards - v_all[:, :-1])
-                                           + alpha * ent + beta * policy_distance)
+                                           + alpha * ent + beta * self.compute_distil(landmark_dist, p))
                     #taken_p_log * tf.stop_gradient(advantage) + self.entropy_scale * ent)
 
 
