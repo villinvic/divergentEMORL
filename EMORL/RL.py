@@ -283,12 +283,12 @@ class AC(tf.keras.Model, Default):
         # Set both networks with corresponding initial recurrent state
         self.optim.learning_rate.assign(training_params['learning_rate'])
 
-        v_loss, mean_entropy, min_entropy, max_entropy, min_logp, max_logp, grad_norm \
+        v_loss, mean_entropy, min_entropy, policy_d, min_logp, max_logp, grad_norm \
             = self._train(tf.cast(training_params['entropy_cost'], tf.float32),
                           tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs,
                           landmarks, tf.cast(training_params['beta'],tf.float32), gpu)
 
-        print(v_loss, max_entropy, mean_entropy, grad_norm)
+        print(v_loss, policy_d, mean_entropy, grad_norm)
 
         tf.summary.scalar(name=log_name+"/v_loss", data=v_loss)
         tf.summary.scalar(name=log_name+"/min_entropy", data=min_entropy)
@@ -366,7 +366,7 @@ class AC(tf.keras.Model, Default):
             mean_entropy = tf.reduce_mean(ent)
             min_entropy = tf.reduce_min(ent)
             max_entropy = tf.reduce_max(ent)
-            return v_loss, mean_entropy, min_entropy, p_loss, tf.reduce_min(
+            return v_loss, mean_entropy, min_entropy, tf.reduce_mean(policy_distance), tf.reduce_min(
                 p_log), tf.reduce_max(p_log), x
 
     def compute_gae(self, v, rewards, last_v, gamma):
