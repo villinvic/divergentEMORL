@@ -277,7 +277,7 @@ class AC(tf.keras.Model, Default):
                                      axis=2)
         self.pattern = tf.expand_dims([tf.fill((self.TRAJECTORY_LENGTH-1,), i) for i in range(self.BATCH_SIZE)], axis=2)
 
-    def train(self, log_name, training_params, states, actions, rewards, probs, gpu, landmarks=None):
+    def train(self, log_name, training_params, states, actions, rewards, probs, landmarks, gpu):
         # do some stuff with arrays
         # print(states, actions, rewards, dones)
         # Set both networks with corresponding initial recurrent state
