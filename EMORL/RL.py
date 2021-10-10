@@ -285,8 +285,7 @@ class AC(tf.keras.Model, Default):
 
         v_loss, mean_entropy, min_entropy, policy_d, min_logp, max_logp, grad_norm \
             = self._train(tf.cast(training_params['entropy_cost'], tf.float32),
-                          tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs,
-                          landmarks[0], tf.cast(training_params['beta'],tf.float32), gpu)
+                          tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs, tf.cast(training_params['beta'],tf.float32), gpu)
 
         print(v_loss, policy_d, mean_entropy, grad_norm)
 
@@ -307,7 +306,7 @@ class AC(tf.keras.Model, Default):
 
 
     @tf.function
-    def _train(self, alpha, gamma, states, actions, rewards, probs, policy_landmarks, beta, gpu):
+    def _train(self, alpha, gamma, states, actions, rewards, probs, beta, gpu):
         '''
         Main training function
         '''
