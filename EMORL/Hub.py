@@ -41,6 +41,8 @@ class Hub(Default, Logger):
         self.traj_index = 0
         self.policy_distributions = np.zeros((self.pop_size+self.n_offspring, self.n_traj_ref, self.BATCH_SIZE,
                                               self.TRAJECTORY_LENGTH-1, dummy_env.action_dim), dtype=np.float32)
+        self.landmark_policy_dist = np.zeros((self.BATCH_SIZE, self.TRAJECTORY_LENGTH-1, dummy_env.action_dim),
+                                             dtype=np.float32)
         self.perf_and_uniqueness = np.zeros((2, self.pop_size+self.n_offspring, 1), dtype=np.float32)
 
         self.eval_queue = np.full((100,), fill_value=np.nan, dtype=np.float32)
@@ -94,13 +96,18 @@ class Hub(Default, Logger):
             probs = np.float32(np.stack(trajectory[:, 2], axis=0)[:, :-1])
             wins = np.float32(np.stack(trajectory[:, 3], axis=0)[:, :-1])
             rews, performance = self.rewards.compute(states, self.offspring_pool[index].genotype['experience'], wins)
+
+            # landmark distributions
+            self.landmark_policy_dist[:, :, :] = 0
+            for individual in self.select_k(index):
+                self.landmark_policy_dist[:, :] += individual.probabilities_for(states)
             # Train
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
 
                 self.offspring_pool[index].mean_entropy = \
                     self.offspring_pool[index].genotype['brain'].train(str(index),
                         self.offspring_pool[index].genotype['learning'],states, actions, rews, probs,
-                        [individual.genotype['brain'] for individual in self.select_k(index)], 0)
+                        self.landmark_policy_dist, 0)
             self.train_cntr += 1
             tf.summary.experimental.set_step(self.train_cntr)
 
