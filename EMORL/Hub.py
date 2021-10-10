@@ -247,6 +247,8 @@ class Hub(Default, Logger):
         full_path = 'checkpoints/' + self.running_instance_id + '/ckpt_' + str(self.population.checkpoint_index) + '/'
         plot_stats(self.perf_and_uniqueness[:,:,0], selected, self.population, full_path)
 
+        print(self.perf_and_uniqueness[:,selected,0])
+
 
     def load(self, ckpt_path):
         self.logger.info('Loading checkpoint %s ...' % ckpt_path)

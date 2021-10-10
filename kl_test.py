@@ -11,6 +11,8 @@ y = np.random.random(full_dim)**10
 x /= np.sum(x, axis=4)[:,:,:,:,np.newaxis]
 y /= np.sum(y, axis=4)[:,:,:,:,np.newaxis]
 
+x[:,:,:,:,:] = 0.
+
 print(x, y, np.max(x), np.max(y), np.sum(x), np.sum(y))
 
 
