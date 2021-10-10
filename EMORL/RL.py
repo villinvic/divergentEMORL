@@ -277,7 +277,7 @@ class AC(tf.keras.Model, Default):
                                      axis=2)
         self.pattern = tf.expand_dims([tf.fill((self.TRAJECTORY_LENGTH-1,), i) for i in range(self.BATCH_SIZE)], axis=2)
 
-    def train(self, log_name, training_params, states, actions, rewards, probs, gpu, *landmarks):
+    def train(self, log_name, training_params, states, actions, rewards, probs, landmarks, gpu):
         # do some stuff with arrays
         # print(states, actions, rewards, dones)
         # Set both networks with corresponding initial recurrent state
@@ -286,7 +286,7 @@ class AC(tf.keras.Model, Default):
         v_loss, mean_entropy, min_entropy, policy_d, min_logp, max_logp, grad_norm \
             = self._train(tf.cast(training_params['entropy_cost'], tf.float32),
                           tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs,
-                          landmarks, tf.cast(training_params['beta'],tf.float32), gpu)
+                          tf.cast(training_params['beta'],tf.float32), gpu, *landmarks)
 
         print(v_loss, policy_d, mean_entropy, grad_norm)
 
