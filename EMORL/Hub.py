@@ -100,7 +100,7 @@ class Hub(Default, Logger):
             # landmark distributions
             self.landmark_policy_dist[:, :, :] = 0
             for individual in self.select_k(index):
-                self.landmark_policy_dist[:, :] += individual.probabilities_for(states)
+                self.landmark_policy_dist[:, :] += individual.probabilities_for(states[:, :-1])
             # Train
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
 
