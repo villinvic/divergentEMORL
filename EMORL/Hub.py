@@ -223,6 +223,8 @@ class Hub(Default, Logger):
         for pop in [self.population, self.offspring_pool]:
             for individual in pop:
                 self.perf_and_uniqueness[0, index, 0] = individual.performance
+                if individual.performance == -np.inf:
+                    self.perf_and_uniqueness[1, index, 0] = 0.
                 index += 1
 
         frontiers = ND_sort(self.perf_and_uniqueness)
@@ -237,17 +239,20 @@ class Hub(Default, Logger):
                 selected.extend(frontiers[frontier_index])
             frontier_index += 1
 
+        # get stats of selection...
+        full_path = 'checkpoints/' + self.running_instance_id + '/ckpt_' + str(
+            self.population.checkpoint_index) + '/'
+        plot_stats(self.perf_and_uniqueness[:, :, 0], selected, self.population, full_path)
+
+        print(self.perf_and_uniqueness[:, selected, 0])
+
         for new_index, individual_index in enumerate(selected):
             if individual_index < self.pop_size:
                 self.population[new_index].inerit_from(self.population[individual_index])
             else:
                 self.population[new_index].inerit_from(self.offspring_pool[individual_index-self.pop_size])
 
-        # get stats of selection...
-        full_path = 'checkpoints/' + self.running_instance_id + '/ckpt_' + str(self.population.checkpoint_index) + '/'
-        plot_stats(self.perf_and_uniqueness[:,:,0], selected, self.population, full_path)
 
-        print(self.perf_and_uniqueness[:,selected,0])
 
 
     def load(self, ckpt_path):
