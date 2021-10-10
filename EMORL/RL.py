@@ -277,14 +277,16 @@ class AC(tf.keras.Model, Default):
                                      axis=2)
         self.pattern = tf.expand_dims([tf.fill((self.TRAJECTORY_LENGTH-1,), i) for i in range(self.BATCH_SIZE)], axis=2)
 
-    def train(self, log_name, training_params, states, actions, rewards, probs, gpu):
+    def train(self, log_name, training_params, states, actions, rewards, probs, gpu, landmarks=None):
         # do some stuff with arrays
         # print(states, actions, rewards, dones)
         # Set both networks with corresponding initial recurrent state
         self.optim.learning_rate.assign(training_params['learning_rate'])
 
         v_loss, mean_entropy, min_entropy, max_entropy, min_logp, max_logp, grad_norm \
-            = self._train(tf.cast(training_params['entropy_cost'], tf.float32), tf.cast(training_params['gamma'], tf.float32), states, actions, rewards, probs, gpu)
+            = self._train(tf.cast(training_params['entropy_cost'], tf.float32),
+                          tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs,
+                          landmarks, tf.cast(training_params['beta'],tf.float32), gpu)
 
         print(v_loss, max_entropy, mean_entropy, grad_norm)
 
@@ -305,7 +307,7 @@ class AC(tf.keras.Model, Default):
 
 
     @tf.function
-    def _train(self, alpha, gamma, states, actions, rewards, probs, gpu):
+    def _train(self, alpha, gamma, states, actions, rewards, probs, policy_landmarks, beta, gpu):
         '''
         Main training function
         '''
@@ -332,11 +334,17 @@ class AC(tf.keras.Model, Default):
 
                 ent = - tf.reduce_sum(tf.multiply(p_log, p), -1)
 
+                policy_distance = sum([self.compute_distil(landmark.policy.get_probs(landmark.dense_1(states)[:, :-1]), p)]
+                               for landmark in policy_landmarks) / float(len(policy_landmarks))
 
                 taken_p_log = tf.gather_nd(p_log, indices, batch_dims=0)
 
-                p_loss = - tf.reduce_mean( tf.stop_gradient(rho_mu) * taken_p_log * tf.stop_gradient(targets[:, 1:]*gamma + rewards - v_all[:, :-1]) + alpha * ent)
+                p_loss = - tf.reduce_mean( tf.stop_gradient(rho_mu) * taken_p_log
+                                           * tf.stop_gradient(targets[:, 1:]*gamma + rewards - v_all[:, :-1])
+                                           + alpha * ent + beta * policy_distance)
                     #taken_p_log * tf.stop_gradient(advantage) + self.entropy_scale * ent)
+
+
 
                 total_loss = 0.5 * v_loss + p_loss
 
@@ -395,6 +403,11 @@ class AC(tf.keras.Model, Default):
         returns = tf.reverse(returns, [0])
         returns = tf.transpose(returns)
         return tf.concat([returns, tf.expand_dims(last_vr, axis=1)], axis=1)
+
+    @staticmethod
+    def compute_distil(dist_1, dist_2):
+        return tf.reduce_sum(
+            dist_1 * (tf.math.log(dist_1 + 1e-8) - tf.math.log(dist_2 + 1e-8)), axis=-1)
 
     def get_params(self):
         actor_weights = [dense.get_weights() for dense in [self.dense_1] + self.policy.denses]
