@@ -98,7 +98,9 @@ class Hub(Default, Logger):
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
 
                 self.offspring_pool[index].mean_entropy = \
-                    self.offspring_pool[index].genotype['brain'].train(str(index), self.offspring_pool[index].genotype['learning'],states, actions, rews, probs, 0)
+                    self.offspring_pool[index].genotype['brain'].train(str(index),
+                        self.offspring_pool[index].genotype['learning'],states, actions, rews, probs,
+                        [individual.genotype['brain'] for individual in self.select_k(index)], 0)
             self.train_cntr += 1
             tf.summary.experimental.set_step(self.train_cntr)
 
@@ -152,9 +154,9 @@ class Hub(Default, Logger):
                 offspring.perturb()
             offspring.generation = self.population.checkpoint_index
 
-    def select_k(self):
+    def select_k(self, excluded):
         # for each individual, select k random (or nearest ?)  individual behavior stats as a landmark for divergence
-        return self.population[np.random.choice(self.pop_size, self.k_random)]
+        return self.population[np.random.choice(np.delete(np.arange(self.pop_size), excluded, 0), self.k_random)]
 
     def reset_eval_queue(self):
         self.eval_queue[:] = np.nan
