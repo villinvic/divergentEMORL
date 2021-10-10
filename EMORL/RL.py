@@ -277,7 +277,7 @@ class AC(tf.keras.Model, Default):
                                      axis=2)
         self.pattern = tf.expand_dims([tf.fill((self.TRAJECTORY_LENGTH-1,), i) for i in range(self.BATCH_SIZE)], axis=2)
 
-    def train(self, log_name, training_params, states, actions, rewards, probs, landmarks, gpu):
+    def train(self, log_name, training_params, states, actions, rewards, probs, gpu, *landmarks):
         # do some stuff with arrays
         # print(states, actions, rewards, dones)
         # Set both networks with corresponding initial recurrent state
@@ -307,7 +307,7 @@ class AC(tf.keras.Model, Default):
 
 
     @tf.function
-    def _train(self, alpha, gamma, states, actions, rewards, probs, policy_landmarks, beta, gpu):
+    def _train(self, alpha, gamma, states, actions, rewards, probs, beta, gpu, *policy_landmarks):
         '''
         Main training function
         '''
@@ -334,7 +334,7 @@ class AC(tf.keras.Model, Default):
 
                 ent = - tf.reduce_sum(tf.multiply(p_log, p), -1)
 
-                policy_distance = tf.add_n([self.compute_distil(p, p)
+                policy_distance = tf.add_n([self.compute_distil(landmark.policy.get_probs(landmark.dense_1(states)[:, :-1]), p)
                                for landmark in policy_landmarks]) / tf.cast(len(policy_landmarks), dtype=tf.float32)
 
 
