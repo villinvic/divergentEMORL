@@ -184,7 +184,7 @@ class Hub(Default, Logger):
                 if perf is not None:
                     self.eval_queue[self.eval_index % len(self.eval_queue)] = perf
                     self.eval_index += 1
-                if self.population[index].mean_entropy < self.max_entropy * self.critical_entropy_ratio:
+                if self.offspring_pool[index].mean_entropy < self.max_entropy * self.critical_entropy_ratio:
                     break
                 current = time()
                 if current - last_pub_time > 5:
