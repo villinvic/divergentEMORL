@@ -45,7 +45,7 @@ class Hub(Default, Logger):
                                              dtype=np.float32)
         self.perf_and_uniqueness = np.zeros((2, self.pop_size+self.n_offspring, 1), dtype=np.float32)
 
-        self.eval_queue = np.full((100,), fill_value=np.nan, dtype=np.float32)
+        self.eval_queue = np.full((10,), fill_value=np.nan, dtype=np.float32)
         self.eval_index = 0
 
         self.rewards = Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.n_cyclones, dummy_env.n_exits)
