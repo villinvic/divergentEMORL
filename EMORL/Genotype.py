@@ -87,15 +87,13 @@ class Genotype(Default):
     def __setitem__(self, key, value):
         self._genes[key] = value
 
-    def crossover(self, other_genotype):
-        genes = self.get_params(full_brain=True)
-        for gene_family, other_gene_family in zip(genes.values(), other_genotype._genes.values()):
+    def crossover(self, other_genotype, target_genotype):
+        genes = self.get_params(trainable=True)
+        target_genotype.set_params(genes, trainable=True)
+
+        for gene_family, other_gene_family in zip(target_genotype._genes.values(), other_genotype._genes.values()):
             if gene_family is not None:
                 gene_family.crossover(other_gene_family)
-
-        genes['brain'] = genes['brain'].get_training_params()
-
-        return genes
 
 
 

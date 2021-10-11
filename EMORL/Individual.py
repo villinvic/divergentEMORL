@@ -58,8 +58,7 @@ class Individual:
             self.performance = other_individuals[0].performance
             self.generation = other_individuals[0].generation
         elif len(other_individuals) == 2:
-            self.genotype.set_params(other_individuals[0].genotype.crossover(other_individuals[1].genotype),
-                                     trainable=True)
+            other_individuals[0].genotype.crossover(other_individuals[1].genotype, target_genotype=self.genotype)
             self.mean_entropy = np.inf
             self.performance = -np.inf
 

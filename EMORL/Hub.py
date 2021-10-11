@@ -233,7 +233,7 @@ class Hub(Default, Logger):
         while len(selected) < self.pop_size:
             if len(frontiers[frontier_index])+len(selected) > self.pop_size:
                 ranked_by_uniqueness = list(sorted(frontiers[frontier_index],
-                                                            key=lambda index: self.perf_and_uniqueness[1, index, 0]))[len(selected)-self.pop_size:]
+                                                            key=lambda index: self.perf_and_uniqueness[0, index, 0]))[len(selected)-self.pop_size:]
                 selected.extend(ranked_by_uniqueness)
             else:
                 selected.extend(frontiers[frontier_index])
@@ -246,7 +246,7 @@ class Hub(Default, Logger):
 
         print(self.perf_and_uniqueness[:, selected, 0])
 
-        for new_index, individual_index in enumerate(selected):
+        for new_index, individual_index in enumerate(sorted(selected)):
             if individual_index < self.pop_size:
                 self.population[new_index].inerit_from(self.population[individual_index])
             else:

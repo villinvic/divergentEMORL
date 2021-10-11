@@ -18,3 +18,7 @@ print(x, y, np.max(x), np.max(y), np.sum(x), np.sum(y))
 
 kl = kl_divergence(x,y)
 print(kl/amount)
+
+x = sorted([1,23])
+for xx in x:
+    print(x)
