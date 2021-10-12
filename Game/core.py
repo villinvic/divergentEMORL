@@ -98,7 +98,7 @@ class Game(Default):
         if self.is_out():
             return True, -1
         if self.is_timeout():
-            return True, 0
+            return True, -1
         # test for cyclones
         for c in self.cyclones:
             if c.kills((self.state[self.indexes['player_x']], self.state[self.indexes['player_y']])):
