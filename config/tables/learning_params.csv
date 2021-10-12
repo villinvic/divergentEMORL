@@ -1,5 +1,5 @@
 name, lower_bound, higher_bound
 "learning_rate", 1e-4, 1.1e-4
-"entropy_cost", 2e-4, 2.1e-4
+"entropy_cost", 4e-4, 4.1e-4
 "gamma", 0.99, 0.991
 "beta", 1e-6, 1e-4
