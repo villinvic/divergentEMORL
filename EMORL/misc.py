@@ -16,3 +16,6 @@ def uniform_with_hole(low=55, high=200):
 
 def kl_divergence(a, b):
     return np.sum(a * (np.log(a+1e-8) - np.log(b+1e-8)))
+
+def policy_similarity(a, b, l=1):
+    return np.exp(-kl_divergence(a, b)**2/(2 * l ** 2))

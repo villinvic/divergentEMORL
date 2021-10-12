@@ -8,7 +8,7 @@ import fire
 import os
 
 from EMORL.Population import Population
-from EMORL.misc import kl_divergence
+from EMORL.misc import policy_similarity
 from EMORL.MOO import ND_sort
 from EMORL.plotting import plot_stats
 from Game.core import Game
@@ -221,8 +221,8 @@ class Hub(Default, Logger):
             if individual_index not in failed_indexes:
                 for individual2_index in range(self.pop_size+self.n_offspring):
                     if individual_index != individual2_index and individual2_index not in failed_indexes:
-                        distance += kl_divergence(self.policy_distributions[individual_index],
-                                                   self.policy_distributions[individual2_index])
+                        distance += 1. - policy_similarity(self.policy_distributions[individual_index],
+                                                   self.policy_distributions[individual2_index], self.similarity_l)
                 distance /= (self.pop_size+self.n_offspring-1) * self.BATCH_SIZE * (self.TRAJECTORY_LENGTH-1) * self.n_traj_ref
             self.perf_and_uniqueness[1, individual_index, 0] = distance
 
