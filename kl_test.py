@@ -11,7 +11,7 @@ for d in full_dim[:-1]:
 policies = np.zeros( (10,)+full_dim, dtype=np.float32)
 x = np.random.random(full_dim)
 for i in range(10):
-    policies[i, :, :, :] = x + np.random.random(full_dim) * i * 0.1
+    policies[i, :, :, :] = x + np.random.random(full_dim) * i * 0.01
     policies[i, :, :, :] /= np.sum(policies[i, :, :, :], axis=2)[:,:,np.newaxis]
 
 K = np.zeros((10,10), dtype=np.float32)
@@ -19,8 +19,8 @@ kl = np.zeros((10,10), dtype=np.float32)
 
 for i in range(10):
     for j in range(10):
-        K[i, j] = policy_similarity(policies[i], policies[j], l=120)
-        kl[i, j] = kl_divergence(policies[i], policies[j])
+        K[i, j] = policy_similarity(policies[i], policies[j], l=10)
+        kl[i, j] = 1- K[i, j]
 
 print(kl)
-print(K, np.linalg.det(K))
+print( np.linalg.det(K))
