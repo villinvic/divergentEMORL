@@ -1,24 +1,26 @@
-from EMORL.misc import kl_divergence
+from EMORL.misc import policy_similarity, kl_divergence
 import numpy as np
 
-full_dim = (30, 15, 64, 79, 9)
+np.set_printoptions(precision=3, suppress=True)
+
+full_dim = (64, 79, 9)
 amount = 1
 for d in full_dim[:-1]:
     amount *= d
 
+policies = np.zeros( (10,)+full_dim, dtype=np.float32)
 x = np.random.random(full_dim)
-y = np.random.random(full_dim)**10
-x /= np.sum(x, axis=4)[:,:,:,:,np.newaxis]
-y /= np.sum(y, axis=4)[:,:,:,:,np.newaxis]
+for i in range(10):
+    policies[i, :, :, :] = x + np.random.random(full_dim) * i * 0.1
+    policies[i, :, :, :] /= np.sum(policies[i, :, :, :], axis=2)[:,:,np.newaxis]
 
-x[:,:,:,:,:] = 0.
+K = np.zeros((10,10), dtype=np.float32)
+kl = np.zeros((10,10), dtype=np.float32)
 
-print(x, y, np.max(x), np.max(y), np.sum(x), np.sum(y))
+for i in range(10):
+    for j in range(10):
+        K[i, j] = policy_similarity(policies[i], policies[j], l=120)
+        kl[i, j] = kl_divergence(policies[i], policies[j])
 
-
-kl = kl_divergence(x,y)
-print(kl/amount)
-
-x = sorted([1,23])
-for xx in x:
-    print(x)
+print(kl)
+print(K, np.linalg.det(K))

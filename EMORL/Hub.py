@@ -66,6 +66,8 @@ class Hub(Default, Logger):
         self.writer = tf.summary.create_file_writer(log_dir)
         self.writer.set_as_default()
 
+        self.policy_kernel = np.empty((self.pop_size, self.pop_size), dtype=np.float32)
+
     def recv_training_data(self):
         received = 0
         try:
