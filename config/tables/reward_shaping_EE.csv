@@ -1,4 +1,4 @@
 name, lower_bound, higher_bound
-"velocity", 0.001, 0.1
-"movement", 0.001, 0.1
-"win", 1., 1.01
+"velocity", 0.1, 1.01
+"movement", 0.1, 1.01
+"win", 1., 2.0

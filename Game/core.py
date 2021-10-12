@@ -95,8 +95,10 @@ class Game(Default):
         self.state[self.indexes['player_x']] += self.state[self.indexes['inertia_x']]
         self.state[self.indexes['player_y']] += self.state[self.indexes['inertia_y']]
 
-        if self.is_out() or self.is_timeout():
+        if self.is_out():
             return True, -1
+        if self.is_timeout():
+            return True, 0
         # test for cyclones
         for c in self.cyclones:
             if c.kills((self.state[self.indexes['player_x']], self.state[self.indexes['player_y']])):
