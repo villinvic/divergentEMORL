@@ -322,7 +322,7 @@ class AC(tf.keras.Model, Default):
 
                 v_all = self.V(lstm_states)[: ,:, 0]
                 p = self.policy.get_probs(lstm_states[:, :-1])
-                kl = tf.divide(p, probs+1e-3)#tf.reduce_sum(p * tf.math.log(tf.divide(p, probs)), axis=-1)
+                kl = tf.divide(p, probs+1e-4)#tf.reduce_sum(p * tf.math.log(tf.divide(p, probs)), axis=-1)
                 indices = tf.concat(values=[self.pattern, self.range_, tf.expand_dims(actions, axis=2)], axis=2)
                 rho_mu = tf.minimum(1., tf.gather_nd(kl, indices, batch_dims=0))
                 targets = self.compute_trace_targets(v_all, rewards, rho_mu, gamma)
@@ -340,7 +340,7 @@ class AC(tf.keras.Model, Default):
 
                 p_loss = - tf.reduce_mean( tf.stop_gradient(rho_mu) * taken_p_log
                                            * tf.stop_gradient(targets[:, 1:]*gamma + rewards - v_all[:, :-1])
-                                           + alpha * ent + beta * policy_distance)
+                                           + alpha * ent + beta * policy_distance*0)
                     #taken_p_log * tf.stop_gradient(advantage) + self.entropy_scale * ent)
 
 

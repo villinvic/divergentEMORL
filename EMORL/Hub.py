@@ -175,6 +175,7 @@ class Hub(Default, Logger):
 
     def train_offspring(self):
         # Train each individuals for x minutes, 1 by 1, on the trainer (can be the Hub, with GPU)
+        # empty queue
         for index in range(self.n_offspring):
             self.logger.info('Training offspring n°%d...' % index)
             self.pub_params(index)
@@ -182,6 +183,9 @@ class Hub(Default, Logger):
             self.reset_eval_queue()
             start_time = time()
             k_landmarks = self.select_k(index)
+            for _ in range(5):
+                self.recv_training_data()
+            del self.exp[:]
             while time() - start_time < self.train_time:
                 self.recv_training_data()
                 perf = self.train(index, k_landmarks)
