@@ -113,7 +113,7 @@ class Hub(Default, Logger):
             self.train_cntr += 1
             tf.summary.experimental.set_step(self.train_cntr)
 
-            print('train ! R=', performance, ', H=', self.offspring_pool[index].mean_entropy)
+            print('train ! R=', performance, ', H=', self.offspring_pool[index].mean_entropy, ', alpha=', self.offspring_pool[index].genotype['learning']['entropy_cost'])
 
             self.sample_trajectory(states)
 
