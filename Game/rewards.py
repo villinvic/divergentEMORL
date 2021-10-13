@@ -45,10 +45,10 @@ class Rewards:
                - (np.sqrt((states[:, :-1, 6 * self.n_entities]-states[:, :-1, 0])**2+(states[:, :-1, 6 * self.n_entities+1]-states[:, :-1, 1])**2))
 
         for i in range(1, self.n_exits):
-            self.dist[:, :] = np.minimum(self.dist, (np.sqrt((states[:, 1:, 6 * self.n_entities]-states[:, 1:, 6*i])**2+(states[:, 1:, 6 * self.n_entities+1]-states[:, 1:, 6*i +1])**2))\
-               - (np.sqrt((states[:, :-1, 6 * self.n_entities]-states[:, :-1, 6*i])**2+(states[:, :-1, 6 * self.n_entities+1]-states[:, :-1, 6*i+1])**2)))
+            self.dist[:, :] += np.sqrt((states[:, 1:, 6 * self.n_entities]-states[:, 1:, 6*i])**2+(states[:, 1:, 6 * self.n_entities+1]-states[:, 1:, 6*i +1])**2)\
+               - (np.sqrt((states[:, :-1, 6 * self.n_entities]-states[:, :-1, 6*i])**2+(states[:, :-1, 6 * self.n_entities+1]-states[:, :-1, 6*i+1])**2))
 
-        self['movement'] = -self.dist
+        self['movement'] = -self.dist/self.n_exits
 
         self['win'][:, :] = base_rewards
 
