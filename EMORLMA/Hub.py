@@ -28,20 +28,21 @@ class Hub(Default, Logger):
 
         self.logger.info("Population Initialization started...")
         self.population = Population(self.pop_size, dummy_env.state_dim, dummy_env.action_dim)
-        self.population.initialize(trainable=True, batch_dim=(self.BATCH_SIZE, self.TRAJECTORY_LENGTH))
+        self.population.initialize(trainable=True)
         if ckpt:
             self.load(ckpt)
         self.offspring_pool = Population(self.n_offspring, dummy_env.state_dim, dummy_env.action_dim)
         # Init pop
 
-        self.offspring_pool.initialize(trainable=True, batch_dim=(self.BATCH_SIZE, self.TRAJECTORY_LENGTH))
+        self.offspring_pool.initialize(trainable=True)
 
         # tajectories used to compute behavior distance
-        self.sampled_trajectories = np.zeros((self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.state_dim), dtype=np.float32)
-        self.sampled_trajectories_tmp = np.zeros_like(self.sampled_trajectories)
+        self.sampled_trajectories = np.zeros((self.n_traj_ref, self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.state_dim), dtype=np.float32)
         self.traj_index = 0
-        self.behavior_embeddings = np.zeros((self.pop_size+self.n_offspring, self.BATCH_SIZE,
+        self.policy_distributions = np.zeros((self.pop_size+self.n_offspring, self.n_traj_ref, self.BATCH_SIZE,
                                               self.TRAJECTORY_LENGTH-1, dummy_env.action_dim), dtype=np.float32)
+        self.landmark_policy_dist = np.zeros((self.BATCH_SIZE, self.TRAJECTORY_LENGTH-1, dummy_env.action_dim),
+                                             dtype=np.float32)
         self.perf_and_uniqueness = np.zeros((2, self.pop_size+self.n_offspring, 1), dtype=np.float32)
 
         self.eval_queue = np.full((30,), fill_value=np.nan, dtype=np.float32)
@@ -66,22 +67,6 @@ class Hub(Default, Logger):
         self.writer.set_as_default()
 
         self.policy_kernel = np.empty((self.pop_size, self.pop_size), dtype=np.float32)
-        self.policy_kernel_evo = np.empty((self.pop_size+1, self.pop_size+1), dtype=np.float32)
-
-        self.init_sampled_trajectories(dummy_env)
-
-    def init_sampled_trajectories(self, dummy_env):
-        for i in range(self.BATCH_SIZE):
-            for j in range(self.TRAJECTORY_LENGTH):
-
-                n_steps = np.random.randint(3,10)
-                for _ in range(n_steps):
-                    done, _ = dummy_env.step(np.random.choice(dummy_env.action_dim))
-                    if done:
-                        dummy_env.reset()
-                self.sampled_trajectories[i, j, :] = dummy_env.state / dummy_env.scales
-
-        self.sampled_trajectories_tmp[:, :, :] = self.sampled_trajectories
 
     def recv_training_data(self):
         received = 0
@@ -101,24 +86,7 @@ class Hub(Default, Logger):
         except zmq.ZMQError:
             pass
 
-    def compute_diversity(self):
-        for index, individual in enumerate(self.population):
-                self.behavior_embeddings[index, :, :, :] = individual.probabilities_for(self.sampled_trajectories[:, :-1])
-
-        for i in range(self.pop_size):
-            for j in range(self.pop_size):
-                if i==j:
-                    self.policy_kernel[i, j] = 1.
-                else:
-                    self.policy_kernel[i, j] = policy_similarity(self.behavior_embeddings[i], self.behavior_embeddings[j],
-                                                                 l=self.similarity_l)
-        self.policy_kernel_evo[:-1, :-1] = self.policy_kernel
-        div = np.linalg.det(self.policy_kernel)
-        self.logger.info('Population Diversity = %.3f' % div)
-        print(self.policy_kernel)
-        return div
-
-    def train(self, index):
+    def train(self, index, landmarks):
         if len(self.exp) >= self.BATCH_SIZE:
             # Get experience from the queue
             trajectory = pd.DataFrame(self.exp[:self.BATCH_SIZE]).values
@@ -132,31 +100,32 @@ class Hub(Default, Logger):
             rews, performance = self.rewards.compute(states, self.offspring_pool[index].genotype['experience'], wins)
 
             # landmark distributions
+            self.landmark_policy_dist[:, :, :] = 0
+            for individual in landmarks:
+                self.landmark_policy_dist[:, :] += individual.probabilities_for(states[:, :-1])
             # Train
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
 
                 self.offspring_pool[index].mean_entropy = \
-                    self.offspring_pool[index].genotype['brain'].train(index, self.sampled_trajectories,
-                                                                       self.behavior_embeddings[:self.pop_size],
-                                                                       self.policy_kernel_evo, self.similarity_l,
-                                                                       self.pop_size,
-                                                                       self.offspring_pool[index].genotype['learning'],
-                                                                       states, actions, rews, probs, 0)
+                    self.offspring_pool[index].genotype['brain'].train(str(index),
+                        self.offspring_pool[index].genotype['learning'],states, actions, rews, probs,
+                        self.landmark_policy_dist, 0)
             self.train_cntr += 1
             tf.summary.experimental.set_step(self.train_cntr)
 
             print('train ! R=', performance, ', H=', self.offspring_pool[index].mean_entropy, ', alpha=', self.offspring_pool[index].genotype['learning']['entropy_cost'])
 
-            self.sample_states(states)
+            self.sample_trajectory(states)
+
+
 
             return performance
 
         return None
 
-    def sample_states(self, batch):
-        if  self.traj_index < self.BATCH_SIZE or np.random.random() < self.save_traj_batch_chance:
-            self.sampled_trajectories_tmp[(self.traj_index//self.TRAJECTORY_LENGTH)%self.BATCH_SIZE, self.traj_index%self.TRAJECTORY_LENGTH, :] = \
-                batch[np.random.choice(self.BATCH_SIZE), np.random.choice(self.TRAJECTORY_LENGTH)]
+    def sample_trajectory(self, sample):
+        if self.traj_index < self.n_traj_ref or np.random.random() < self.save_traj_batch_chance:
+            self.sampled_trajectories[self.traj_index%self.n_traj_ref, :, :, :] = sample
             self.traj_index += 1
 
     def __call__(self):
@@ -164,18 +133,16 @@ class Hub(Default, Logger):
             while True:
                 self.population.checkpoint_index += 1
                 self.logger.info('------| Starting Generation %d |------' %self.population.checkpoint_index)
-                self.logger.info('Div(P)= %.3f' % self.compute_diversity())
                 self.logger.info('Making offspring...')
                 self.make_offspring()
                 self.logger.info('Training offspring...')
                 self.train_offspring()
-                self.sampled_trajectories[:,:,:] = self.sampled_trajectories_tmp
                 self.logger.info('Computing uniqueness...')
                 self.compute_uniqueness()
                 self.logger.info('Selecting...')
                 self.select()
-                self.save()
 
+                self.save()
         except KeyboardInterrupt:
             pass
 
@@ -217,12 +184,13 @@ class Hub(Default, Logger):
             last_pub_time = time()
             self.reset_eval_queue()
             start_time = time()
+            k_landmarks = self.select_k(index)
             for _ in range(5):
                 self.recv_training_data()
             del self.exp[:]
             while time() - start_time < self.train_time:
                 self.recv_training_data()
-                perf = self.train(index)
+                perf = self.train(index, k_landmarks)
                 if perf is not None:
                     self.eval_queue[self.eval_index % len(self.eval_queue)] = perf
                     self.eval_index += 1
@@ -241,12 +209,13 @@ class Hub(Default, Logger):
         failed_indexes = []
         for pop in [self.population, self.offspring_pool]:
             for individual in pop:
-                if individual.mean_entropy < self.min_entropy_ratio * self.max_entropy:
-                    individual.performance = -np.inf
-                    self.behavior_embeddings[index, :, :, :] = 0.
-                    failed_indexes.append(index)
-                else:
-                    self.behavior_embeddings[index, :, :, :] = individual.probabilities_for(self.sampled_trajectories[:, :-1])
+                for batch_index, batch in enumerate(self.sampled_trajectories):
+                    if individual.mean_entropy < self.min_entropy_ratio * self.max_entropy:
+                        individual.performance = -np.inf
+                        self.policy_distributions[index, batch_index, :, :, :] = 0.
+                        failed_indexes.append(index)
+                    else:
+                        self.policy_distributions[index, batch_index, :, :, :] = individual.probabilities_for(batch[:, :-1])
                 index += 1
 
         for individual_index in range(self.pop_size+self.n_offspring):
@@ -254,9 +223,9 @@ class Hub(Default, Logger):
             if individual_index not in failed_indexes:
                 for individual2_index in range(self.pop_size+self.n_offspring):
                     if individual_index != individual2_index and individual2_index not in failed_indexes:
-                        distance += 1. - policy_similarity(self.behavior_embeddings[individual_index],
-                                                   self.behavior_embeddings[individual2_index], self.similarity_l)
-                distance /= (self.pop_size+self.n_offspring-1)
+                        distance += 1. - policy_similarity(self.policy_distributions[individual_index],
+                                                   self.policy_distributions[individual2_index], self.similarity_l)
+                distance /= (self.pop_size+self.n_offspring-1) * self.BATCH_SIZE * (self.TRAJECTORY_LENGTH-1) * self.n_traj_ref
             self.perf_and_uniqueness[1, individual_index, 0] = distance
 
     def select(self):
@@ -293,6 +262,9 @@ class Hub(Default, Logger):
             else:
                 self.population[new_index].inerit_from(self.offspring_pool[individual_index-self.pop_size])
 
+
+
+
     def load(self, ckpt_path):
         self.logger.info('Loading checkpoint %s ...' % ckpt_path)
         self.population.load(ckpt_path)
@@ -311,12 +283,11 @@ class Hub(Default, Logger):
         self.population.save(full_path)
 
         _, dirs, _ = next(os.walk(ckpt_path))
-
         if len(dirs) > self.ckpt_keep:
             oldest = sorted(dirs, key=lambda dir: int(dir.split('ckpt_')[-1]))[0]
             _, _, files = next(os.walk(ckpt_path + oldest))
             for f in files:
-                if '.pkl' in f or '.params' in f or '.png' in f:
+                if '.pkl' in f or '.params' in f or '.pdf' in f:
                     os.remove(ckpt_path + oldest + '/' + f)
             try:
                 os.rmdir(ckpt_path + oldest)

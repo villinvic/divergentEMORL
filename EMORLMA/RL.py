@@ -1,5 +1,3 @@
-import sys
-
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, LSTM
 from tensorflow.keras.backend import set_value
@@ -279,24 +277,22 @@ class AC(tf.keras.Model, Default):
                                      axis=2)
         self.pattern = tf.expand_dims([tf.fill((self.TRAJECTORY_LENGTH-1,), i) for i in range(self.BATCH_SIZE)], axis=2)
 
-    def train(self, index, S, phi, K, l, size,
-              training_params, states, actions, rewards, probs, gpu):
+    def train(self, log_name, training_params, states, actions, rewards, probs, landmark_dist, gpu):
         # do some stuff with arrays
         # print(states, actions, rewards, dones)
         # Set both networks with corresponding initial recurrent state
         self.optim.learning_rate.assign(training_params['learning_rate'])
 
-        v_loss, mean_entropy, min_entropy, div, min_logp, max_logp, grad_norm \
-            = self._train(S, phi, K, tf.cast(training_params['lambda'],tf.float32), l, size,
-                          tf.cast(training_params['entropy_cost'], tf.float32),
-                          tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs, gpu)
+        v_loss, mean_entropy, min_entropy, policy_d, min_logp, max_logp, grad_norm \
+            = self._train(tf.cast(training_params['entropy_cost'], tf.float32),
+                          tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs,
+                          landmark_dist, tf.cast(training_params['beta'],tf.float32), gpu)
 
-        log_name = str(index)
-        print(v_loss, div, mean_entropy, grad_norm, tf.reduce_sum(tf.reduce_mean(rewards, axis=0)))
+        print(v_loss, policy_d, mean_entropy, grad_norm, tf.reduce_sum(tf.reduce_mean(rewards, axis=0)))
 
         tf.summary.scalar(name=log_name+"/v_loss", data=v_loss)
         tf.summary.scalar(name=log_name+"/min_entropy", data=min_entropy)
-        tf.summary.scalar(name=log_name+"/diversity", data=div)
+        tf.summary.scalar(name=log_name+"/max_entropy", data=policy_d)
         tf.summary.scalar(name=log_name+"/mean_entropy", data=mean_entropy)
         tf.summary.scalar(name=log_name+"/ent_scale", data=training_params['entropy_cost'])
         tf.summary.scalar(name=log_name+"/gamma", data=training_params['gamma'])
@@ -311,8 +307,7 @@ class AC(tf.keras.Model, Default):
 
 
     @tf.function
-    def _train(self, S, phi, K, lamb, l, size,
-        alpha, gamma, states, actions, rewards, probs, gpu):
+    def _train(self, alpha, gamma, states, actions, rewards, probs, landmark_dist, beta, gpu):
         '''
         Main training function
         '''
@@ -338,15 +333,17 @@ class AC(tf.keras.Model, Default):
                 p_log = tf.math.log(p + 1e-8)
 
                 ent = - tf.reduce_sum(tf.multiply(p_log, p), -1)
-                taken_p_log = tf.gather_nd(p_log, indices, batch_dims=0)
 
-                behavior_embedding = self.policy.get_probs(self.dense_1(S)[:, :-1])
-                new_K = self.compute_kernel(behavior_embedding, phi, K, l, size)
-                _, log_div = tf.linalg.slogdet(new_K)
+                policy_distance = self.compute_distil(landmark_dist, p)
+
+                taken_p_log = tf.gather_nd(p_log, indices, batch_dims=0)
 
                 p_loss = - tf.reduce_mean( tf.stop_gradient(rho_mu) * taken_p_log
                                            * tf.stop_gradient(targets[:, 1:]*gamma + rewards - v_all[:, :-1])
-                                           + alpha * ent + lamb * log_div)
+                                           + alpha * ent + beta * policy_distance*0)
+                    #taken_p_log * tf.stop_gradient(advantage) + self.entropy_scale * ent)
+
+
 
                 total_loss = 0.5 * v_loss + p_loss
 
@@ -367,28 +364,9 @@ class AC(tf.keras.Model, Default):
             self.step.assign_add(1)
             mean_entropy = tf.reduce_mean(ent)
             min_entropy = tf.reduce_min(ent)
-            #max_entropy = tf.reduce_max(ent)
-            return v_loss, mean_entropy, min_entropy, log_div, tf.reduce_min(
+            max_entropy = tf.reduce_max(ent)
+            return v_loss, mean_entropy, min_entropy, tf.reduce_mean(policy_distance), tf.reduce_min(
                 p_log), tf.reduce_max(p_log), x
-
-    def compute_kernel(self, new_behavior_embedding, behavior_embeddings, existing_K, l, size):
-
-        def similarity(cursor):
-            int_cursor = tf.cast(cursor, tf.int32)
-            i = int_cursor // (size+1)
-            j = int_cursor % (size+1)
-            if i == j:
-                return 1.
-            elif i == size:
-                return self.compute_similarity(new_behavior_embedding, behavior_embeddings[j], l)
-            elif j == size:
-                return self.compute_similarity(behavior_embeddings[i], new_behavior_embedding, l)
-            else:
-                return existing_K[i, j]
-
-        K = tf.map_fn(similarity, elems=tf.range((size+1)**2, dtype=tf.int32), fn_output_signature=tf.float32)
-
-        return tf.reshape(K, (size+1, size+1))
 
     def compute_gae(self, v, rewards, last_v, gamma):
         v = tf.transpose(v)
@@ -426,9 +404,9 @@ class AC(tf.keras.Model, Default):
         return tf.concat([returns, tf.expand_dims(last_vr, axis=1)], axis=1)
 
     @staticmethod
-    def compute_similarity(dist_1, dist_2, l):
-        return tf.exp(-tf.square(tf.reduce_sum(
-            dist_1 * (tf.math.log(dist_1 + 1e-8) - tf.math.log(dist_2 + 1e-8))))/(2.*l**2))
+    def compute_distil(dist_1, dist_2):
+        return tf.reduce_sum(
+            dist_1 * (tf.math.log(dist_1 + 1e-8) - tf.math.log(dist_2 + 1e-8)), axis=-1)
 
     def get_params(self):
         actor_weights = [dense.get_weights() for dense in [self.dense_1] + self.policy.denses]

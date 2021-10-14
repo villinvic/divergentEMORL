@@ -17,7 +17,7 @@ class Genotype(Default):
         'brain'
     ]
 
-    def __init__(self, input_dim, output_dim, batch_dim=(1,1), trainable=False, is_dummy=False):
+    def __init__(self, input_dim, output_dim, trainable=False, is_dummy=False):
         super(Genotype, self).__init__()
         self.is_dummy = is_dummy
         self.layer_dims = []
@@ -49,7 +49,7 @@ class Genotype(Default):
                 'experience': RewardShape(),
             }
 
-            self._genes['brain'].init_body(np.zeros((batch_dim+(input_dim,))))
+            self._genes['brain'].init_body(np.zeros((1,1,input_dim)))
 
     def perturb(self):
         if not self.is_dummy:

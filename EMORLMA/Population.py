@@ -40,9 +40,9 @@ class Population:
         else:
             raise StopIteration
 
-    def initialize(self, trainable=False, batch_dim=(1,1)):
+    def initialize(self, trainable=False):
         for ID in range(self.size):
-            self.individuals[ID] = Individual(ID, *self.dims, [], batch_dim=batch_dim, trainable=trainable)
+            self.individuals[ID] = Individual(ID, *self.dims, [], trainable=trainable)
 
     def __repr__(self):
         return self.individuals.__repr__()

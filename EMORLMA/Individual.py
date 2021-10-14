@@ -6,12 +6,12 @@ from EMORL.Genotype import Genotype
 
 
 class Individual:
-    def __init__(self, ID, input_dim, output_dim, behavior_categories, batch_dim=(1,1), trainable=False):
+    def __init__(self, ID, input_dim, output_dim, behavior_categories, trainable=False):
         self.id = ID
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.behavior = Behavior(behavior_categories)
-        self.genotype = Genotype(input_dim, output_dim, batch_dim, trainable=trainable)
+        self.genotype = Genotype(input_dim, output_dim, trainable=trainable)
         self.mean_entropy = np.inf
 
         self.performance = -np.inf
