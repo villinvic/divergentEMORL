@@ -4,7 +4,6 @@ import json
 import os
 
 from EMORL.Individual import Individual
-from EMORL.MOO import ND_sort
 
 
 class Population:
