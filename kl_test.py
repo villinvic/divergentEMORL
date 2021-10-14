@@ -21,7 +21,10 @@ kl = np.zeros((10,10), dtype=np.float32)
 
 for i in range(10):
     for j in range(10):
-        K[i, j] = policy_similarity(policies[i], policies[j], l=1500)
+        if i==j:
+            K[i, j] = 1.
+        else:
+            K[i, j] =  np.random.choice([0.2,0.3,0.5,0.9,0.99], p=[0.25,0.3,0.25,0.1,0.1])#policy_similarity(policies[i], policies[j], l=1500)
         kl[i, j] = 1 - K[i, j]
 
 print(K)

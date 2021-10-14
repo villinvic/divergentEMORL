@@ -66,7 +66,6 @@ class Hub(Default, Logger):
         self.writer.set_as_default()
 
         self.policy_kernel = np.empty((self.pop_size, self.pop_size), dtype=np.float32)
-        self.policy_kernel_evo = np.empty((self.pop_size+1, self.pop_size+1), dtype=np.float32)
 
         self.init_sampled_trajectories(dummy_env)
 
@@ -112,7 +111,6 @@ class Hub(Default, Logger):
                 else:
                     self.policy_kernel[i, j] = policy_similarity(self.behavior_embeddings[i], self.behavior_embeddings[j],
                                                                  l=self.similarity_l)
-        self.policy_kernel_evo[:-1, :-1] = self.policy_kernel
         div = np.linalg.det(self.policy_kernel)
         self.logger.info('Population Diversity = %.3f' % div)
         print(self.policy_kernel)
@@ -136,9 +134,9 @@ class Hub(Default, Logger):
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
 
                 self.offspring_pool[index].mean_entropy = \
-                    self.offspring_pool[index].genotype['brain'].train(index, self.sampled_trajectories,
+                    self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectories,
                                                                        self.behavior_embeddings[:self.pop_size],
-                                                                       self.policy_kernel_evo, self.similarity_l,
+                                                                       self.policy_kernel, self.similarity_l,
                                                                        self.pop_size,
                                                                        self.offspring_pool[index].genotype['learning'],
                                                                        states, actions, rews, probs, 0)
@@ -193,8 +191,11 @@ class Hub(Default, Logger):
         for offspring, parents in zip(self.offspring_pool, best_parents_pairs):
             if np.random.random() < self.crossover_rate:
                 offspring.inerit_from(*self.population[parents])
+                offspring.parent_index = parents[0]
             else:
                 offspring.inerit_from(self.population[parents[0]])
+                offspring.parent_index = np.random.choice(parents)
+
 
             if np.random.random() < self.mutation_rate:
                 offspring.perturb()

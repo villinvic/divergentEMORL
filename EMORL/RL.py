@@ -279,7 +279,7 @@ class AC(tf.keras.Model, Default):
                                      axis=2)
         self.pattern = tf.expand_dims([tf.fill((self.TRAJECTORY_LENGTH-1,), i) for i in range(self.BATCH_SIZE)], axis=2)
 
-    def train(self, index, S, phi, K, l, size,
+    def train(self, index, parent_index, S, phi, K, l, size,
               training_params, states, actions, rewards, probs, gpu):
         # do some stuff with arrays
         # print(states, actions, rewards, dones)
@@ -287,7 +287,7 @@ class AC(tf.keras.Model, Default):
         self.optim.learning_rate.assign(training_params['learning_rate'])
 
         v_loss, mean_entropy, min_entropy, div, min_logp, max_logp, grad_norm \
-            = self._train(S, phi, K, tf.cast(training_params['lambda'],tf.float32), l, size,
+            = self._train(S, phi, K, tf.cast(training_params['lambda'],tf.float32), l, size, parent_index,
                           tf.cast(training_params['entropy_cost'], tf.float32),
                           tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs, gpu)
 
@@ -311,7 +311,7 @@ class AC(tf.keras.Model, Default):
 
 
     @tf.function
-    def _train(self, S, phi, K, lamb, l, size,
+    def _train(self, S, phi, K, lamb, l, size, parent_index,
         alpha, gamma, states, actions, rewards, probs, gpu):
         '''
         Main training function
@@ -341,7 +341,7 @@ class AC(tf.keras.Model, Default):
                 taken_p_log = tf.gather_nd(p_log, indices, batch_dims=0)
 
                 behavior_embedding = self.policy.get_probs(self.dense_1(S)[:, :-1])
-                new_K = self.compute_kernel(behavior_embedding, phi, K, l, size)
+                new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
                 _, log_div = tf.linalg.slogdet(new_K)
 
                 p_loss = - tf.reduce_mean( tf.stop_gradient(rho_mu) * taken_p_log
@@ -371,24 +371,24 @@ class AC(tf.keras.Model, Default):
             return v_loss, mean_entropy, min_entropy, log_div, tf.reduce_min(
                 p_log), tf.reduce_max(p_log), x
 
-    def compute_kernel(self, new_behavior_embedding, behavior_embeddings, existing_K, l, size):
+    def compute_kernel(self, new_behavior_embedding, behavior_embeddings, existing_K, l, size, parent_index):
 
         def similarity(cursor):
             int_cursor = tf.cast(cursor, tf.int32)
-            i = int_cursor // (size+1)
-            j = int_cursor % (size+1)
+            i = int_cursor // size
+            j = int_cursor % size
             if i == j:
                 return 1.
-            elif i == size:
+            elif i == parent_index:
                 return self.compute_similarity(new_behavior_embedding, behavior_embeddings[j], l)
-            elif j == size:
+            elif j == parent_index:
                 return self.compute_similarity(behavior_embeddings[i], new_behavior_embedding, l)
             else:
                 return existing_K[i, j]
 
-        K = tf.map_fn(similarity, elems=tf.range((size+1)**2, dtype=tf.int32), fn_output_signature=tf.float32)
+        K = tf.map_fn(similarity, elems=tf.range(size**2, dtype=tf.int32), fn_output_signature=tf.float32)
 
-        return tf.reshape(K, (size+1, size+1))
+        return tf.reshape(K, (size, size))
 
     def compute_gae(self, v, rewards, last_v, gamma):
         v = tf.transpose(v)
