@@ -280,7 +280,7 @@ class AC(tf.keras.Model, Default):
         self.pattern = tf.expand_dims([tf.fill((self.TRAJECTORY_LENGTH-1,), i) for i in range(self.BATCH_SIZE)], axis=2)
 
     def train(self, index, parent_index, S, phi, K, l, size,
-              training_params, states, actions, rewards, probs, gpu):
+              training_params, states, actions, rewards, probs, not_dones, gpu):
         # do some stuff with arrays
         # print(states, actions, rewards, dones)
         # Set both networks with corresponding initial recurrent state
@@ -289,7 +289,7 @@ class AC(tf.keras.Model, Default):
         v_loss, mean_entropy, min_entropy, div, min_logp, max_logp, grad_norm \
             = self._train(S, phi, K, tf.cast(training_params['lambda'],tf.float32), l, size, parent_index,
                           tf.cast(training_params['entropy_cost'], tf.float32),
-                          tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs, gpu)
+                          tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs, not_dones, gpu)
 
         log_name = str(index)
         print(v_loss, div, mean_entropy, grad_norm, tf.reduce_sum(tf.reduce_mean(rewards, axis=0)))
@@ -312,7 +312,7 @@ class AC(tf.keras.Model, Default):
 
     @tf.function
     def _train(self, S, phi, K, lamb, l, size, parent_index,
-        alpha, gamma, states, actions, rewards, probs, gpu):
+        alpha, gamma, states, actions, rewards, probs, not_dones, gpu):
         '''
         Main training function
         '''
@@ -330,7 +330,7 @@ class AC(tf.keras.Model, Default):
                 kl = tf.divide(p, probs+1e-4)#tf.reduce_sum(p * tf.math.log(tf.divide(p, probs)), axis=-1)
                 indices = tf.concat(values=[self.pattern, self.range_, tf.expand_dims(actions, axis=2)], axis=2)
                 rho_mu = tf.minimum(1., tf.gather_nd(kl, indices, batch_dims=0))
-                targets = self.compute_trace_targets(v_all, rewards, rho_mu, gamma)
+                targets = self.compute_trace_targets(v_all, rewards, not_dones, rho_mu, gamma)
                 #targets = self.compute_gae(v_all[:, :-1], rewards[:, :-1], v_all[:, -1])
                 advantage = tf.stop_gradient(targets) - v_all
                 v_loss = tf.reduce_mean(tf.square(advantage))
@@ -405,20 +405,21 @@ class AC(tf.keras.Model, Default):
         returns = tf.transpose(returns)
         return returns
 
-    def compute_trace_targets(self, v, rewards, rho_mu, gamma):
+    def compute_trace_targets(self, v, rewards, rho_mu, not_dones, gamma):
         # coefs set to 1
         vals_s = tf.transpose(v[:, :-1])
         vals_sp1 = tf.transpose(v[:, 1:])
         last_vr = v[:, -1]# + rewards[:, -1]
         rewards = tf.transpose(rewards) #  rewards[:, :-1]
+        not_dones = tf.transpose(not_dones)
         rho_mu = tf.transpose(rho_mu)
-        reversed_sequence = [tf.reverse(t, [0]) for t in [vals_s, vals_sp1, rewards, rho_mu]]
+        reversed_sequence = [tf.reverse(t, [0]) for t in [vals_s, vals_sp1, rewards, not_dones, rho_mu]]
 
         def bellman(future, present):
-            val_s, val_sp1, r, rm = present
+            val_s, val_sp1, r, mask, rm = present
 
             return val_s+ rm * (r + gamma * val_sp1 - val_s) + gamma * rm \
-                   * (future - val_sp1)
+                   * (future - val_sp1) * mask
 
         returns = tf.scan(bellman, reversed_sequence, last_vr)
         returns = tf.reverse(returns, [0])

@@ -139,7 +139,7 @@ class Hub(Default, Logger):
                                                                        self.policy_kernel, self.similarity_l,
                                                                        self.pop_size,
                                                                        self.offspring_pool[index].genotype['learning'],
-                                                                       states, actions, rews, probs, 0)
+                                                                       states, actions, rews, probs, 1.-np.abs(wins), 0)
             self.train_cntr += 1
             tf.summary.experimental.set_step(self.train_cntr)
 
