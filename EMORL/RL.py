@@ -279,7 +279,7 @@ class AC(tf.keras.Model, Default):
                                      axis=2)
         self.pattern = tf.expand_dims([tf.fill((self.TRAJECTORY_LENGTH-1,), i) for i in range(self.BATCH_SIZE)], axis=2)
 
-    def train(self, index, parent_index, S, phi, K, l, size,
+    def train(self, index, parent_index, S, phi, K, l, DvD_lamb, size,
               training_params, states, actions, rewards, probs, hidden_states, not_dones, gpu):
         # do some stuff with arrays
         # print(states, actions, rewards, dones)
@@ -287,7 +287,7 @@ class AC(tf.keras.Model, Default):
         self.optim.learning_rate.assign(training_params['learning_rate'])
 
         v_loss, mean_entropy, min_entropy, div, min_logp, max_logp, grad_norm \
-            = self._train(S, phi, K, tf.cast(training_params['lambda'],tf.float32), l, size, parent_index,
+            = self._train(S, phi, K, tf.cast(DvD_lamb, tf.float32), l, size, parent_index,
                           tf.cast(training_params['entropy_cost'], tf.float32),
                           tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs, hidden_states, not_dones, gpu)
 
@@ -343,9 +343,12 @@ class AC(tf.keras.Model, Default):
                 ent = - tf.reduce_sum(tf.multiply(p_log, p), -1)
                 taken_p_log = tf.gather_nd(p_log, indices, batch_dims=0)
 
-                behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
-                new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
-                _, log_div = tf.linalg.slogdet(new_K+tf.eye(size) * 10e-4)
+                if lamb != 0.:
+                    behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
+                    new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
+                    _, log_div = tf.linalg.slogdet(new_K+tf.eye(size) * 10e-4)
+                else:
+                    log_div = 0
 
                 p_loss = - tf.reduce_mean( tf.stop_gradient(rho_mu) * taken_p_log
                                            * tf.stop_gradient(targets[:, 1:]*gamma + rewards - v_all[:, :-1])

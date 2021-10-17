@@ -125,7 +125,7 @@ class Hub(Default, Logger):
         print(self.policy_kernel)
         return div
 
-    def train(self, index):
+    def train(self, index, DvD_lamb):
         if len(self.exp) >= self.BATCH_SIZE:
             # Get experience from the queue
             trajectory = pd.DataFrame(self.exp[:self.BATCH_SIZE]).values
@@ -146,7 +146,7 @@ class Hub(Default, Logger):
                 self.offspring_pool[index].mean_entropy = \
                     self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectories,
                                                                        self.behavior_embeddings[:self.pop_size],
-                                                                       self.policy_kernel, self.similarity_l,
+                                                                       self.policy_kernel, self.similarity_l, DvD_lamb,
                                                                        self.pop_size,
                                                                        self.offspring_pool[index].genotype['learning'],
                                                                        states, actions, rews, probs, hidden_states, 1.-np.abs(wins), 0)
@@ -182,6 +182,7 @@ class Hub(Default, Logger):
                 self.compute_uniqueness()
                 self.logger.info('Selecting...')
                 self.select()
+                self.eliminate_garbage()
                 self.save()
 
         except KeyboardInterrupt:
@@ -228,12 +229,10 @@ class Hub(Default, Logger):
             last_pub_time = time()
             self.reset_eval_queue()
             start_time = time()
-            for _ in range(5):
-                self.recv_training_data()
-            del self.exp[:]
+            lamb = self.lamb if np.random.random() < self.DvD_chance else 0.
             while time() - start_time < self.train_time:
                 self.recv_training_data()
-                perf = self.train(index)
+                perf = self.train(index, lamb)
                 if perf is not None:
                     self.eval_queue[self.eval_index % len(self.eval_queue)] = perf
                     self.eval_index += 1
@@ -279,6 +278,14 @@ class Hub(Default, Logger):
                     self.perf_and_uniqueness[1, index, 0] = 0.
                 index += 1
 
+        sorted_args = np.argsort(self.perf_and_uniqueness[0, :, 0])
+        for index in sorted_args[:len(sorted_args)//2]:
+            if self.perf_and_uniqueness[0, index, 0] < np.median(self.perf_and_uniqueness[0, :, 0])\
+                    - 2 * np.std(self.perf_and_uniqueness[0, :, 0]):
+
+                self.perf_and_uniqueness[0, index, 0] = -np.inf
+                self.perf_and_uniqueness[1, index, 0] = 0.
+
         frontiers = ND_sort(self.perf_and_uniqueness)
         selected = []
         frontier_index = 0
@@ -303,6 +310,7 @@ class Hub(Default, Logger):
                 self.population[new_index].inerit_from(self.population[individual_index])
             else:
                 self.population[new_index].inerit_from(self.offspring_pool[individual_index-self.pop_size])
+
 
     def load(self, ckpt_path):
         self.logger.info('Loading checkpoint %s ...' % ckpt_path)
