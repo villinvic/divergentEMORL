@@ -375,8 +375,8 @@ class AC(tf.keras.Model, Default):
             self.step.assign_add(1)
             mean_entropy = tf.reduce_mean(ent)
             min_entropy = tf.reduce_min(ent)
-            #max_entropy = tf.reduce_max(ent)
-            return v_loss, mean_entropy, min_entropy, log_div, tf.reduce_min(
+            max_entropy = tf.reduce_max(ent)
+            return v_loss, mean_entropy, min_entropy, max_entropy, tf.reduce_min(
                 p_log), tf.reduce_max(p_log), x
 
     @tf.function
