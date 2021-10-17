@@ -281,7 +281,7 @@ class Hub(Default, Logger):
         sorted_args = np.argsort(self.perf_and_uniqueness[0, :, 0])
         for index in sorted_args[:len(sorted_args)//2]:
             if self.perf_and_uniqueness[0, index, 0] < np.median(self.perf_and_uniqueness[0, :, 0])\
-                    - 2 * np.std(self.perf_and_uniqueness[0, :, 0]):
+                    - 3 * np.std(self.perf_and_uniqueness[0, :, 0]):
 
                 self.perf_and_uniqueness[0, index, 0] = -np.inf
                 self.perf_and_uniqueness[1, index, 0] = 0.
