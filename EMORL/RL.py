@@ -348,7 +348,7 @@ class AC(tf.keras.Model, Default):
                     new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
                     _, log_div = tf.linalg.slogdet(new_K+tf.eye(size) * 10e-4)
                 else:
-                    log_div = 0
+                    log_div = 0.
 
                 p_loss = - tf.reduce_mean( tf.stop_gradient(rho_mu) * taken_p_log
                                            * tf.stop_gradient(targets[:, 1:]*gamma + rewards - v_all[:, :-1])
