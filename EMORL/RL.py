@@ -286,9 +286,15 @@ class AC(tf.keras.Model, Default):
         # Set both networks with corresponding initial recurrent state
         self.optim.learning_rate.assign(training_params['learning_rate'])
 
-        v_loss, mean_entropy, min_entropy, div, min_logp, max_logp, grad_norm \
-            = self._train(S, phi, K, tf.cast(DvD_lamb, tf.float32), l, size, parent_index,
-                          tf.cast(training_params['entropy_cost'], tf.float32),
+        if DvD_lamb > 0:
+            v_loss, mean_entropy, min_entropy, div, min_logp, max_logp, grad_norm \
+                = self._train_DvD(S, phi, K, tf.cast(DvD_lamb, tf.float32), l, size, parent_index,
+                              tf.cast(training_params['entropy_cost'], tf.float32),
+                              tf.cast(training_params['gamma'], tf.float32), states, actions, rewards, probs,
+                              hidden_states, not_dones, gpu)
+        else:
+            v_loss, mean_entropy, min_entropy, div, min_logp, max_logp, grad_norm \
+            = self._train(tf.cast(training_params['entropy_cost'], tf.float32),
                           tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs, hidden_states, not_dones, gpu)
 
         log_name = str(index)
@@ -311,8 +317,7 @@ class AC(tf.keras.Model, Default):
 
 
     @tf.function
-    def _train(self, S, phi, K, lamb, l, size, parent_index,
-        alpha, gamma, states, actions, rewards, probs, hidden_states, not_dones, gpu):
+    def _train(self, alpha, gamma, states, actions, rewards, probs, hidden_states, not_dones, gpu):
         '''
         Main training function
         '''
@@ -350,16 +355,7 @@ class AC(tf.keras.Model, Default):
                                            + alpha * ent)
 
 
-
-
-                if lamb != 0.:
-                    behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
-                    new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
-                    _, log_div = tf.linalg.slogdet(new_K+tf.eye(size) * 10e-4)
-                    total_loss = 0.5 * v_loss + p_loss + lamb * log_div
-
-                else:
-                    total_loss = 0.5 * v_loss + p_loss
+                total_loss = 0.5 * v_loss + p_loss
 
 
             grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
@@ -380,6 +376,70 @@ class AC(tf.keras.Model, Default):
             mean_entropy = tf.reduce_mean(ent)
             min_entropy = tf.reduce_min(ent)
             #max_entropy = tf.reduce_max(ent)
+            return v_loss, mean_entropy, min_entropy, log_div, tf.reduce_min(
+                p_log), tf.reduce_max(p_log), x
+
+    @tf.function
+    def _train_DvD(self, S, phi, K, lamb, l, size, parent_index,
+               alpha, gamma, states, actions, rewards, probs, hidden_states, not_dones, gpu):
+        '''
+        Main training function
+        '''
+        with tf.device("/gpu:{}".format(gpu) if gpu >= 0 else "/cpu:0"):
+
+            actions = tf.cast(actions, dtype=tf.int32)
+
+            with tf.GradientTape() as tape:
+                # Optimize the actor and critic
+                if self.has_lstm:
+                    lstm_states = self.lstm(states, initial_state=[hidden_states[:, 0], hidden_states[:, 1]])
+                else:
+                    lstm_states = states
+                lstm_states = self.dense_1(lstm_states)
+
+                v_all = self.V(lstm_states)[:, :, 0]
+                p = self.policy.get_probs(lstm_states[:, :-1])
+                kl = tf.divide(p, probs + 1e-4)  # tf.reduce_sum(p * tf.math.log(tf.divide(p, probs)), axis=-1)
+                indices = tf.concat(values=[self.pattern, self.range_, tf.expand_dims(actions, axis=2)], axis=2)
+                rho_mu = tf.minimum(1., tf.gather_nd(kl, indices, batch_dims=0))
+                targets = self.compute_trace_targets(v_all, rewards, not_dones, rho_mu, gamma)
+                # targets = self.compute_gae(v_all[:, :-1], rewards[:, :-1], v_all[:, -1])
+                advantage = tf.stop_gradient(targets) - v_all
+                v_loss = tf.reduce_mean(tf.square(advantage))
+
+                p_log = tf.math.log(p + 1e-8)
+
+                ent = - tf.reduce_sum(tf.multiply(p_log, p), -1)
+                taken_p_log = tf.gather_nd(p_log, indices, batch_dims=0)
+
+                p_loss = - tf.reduce_mean(tf.stop_gradient(rho_mu) * taken_p_log
+                                          * tf.stop_gradient(targets[:, 1:] * gamma + rewards - v_all[:, :-1])
+                                          + alpha * ent)
+
+                behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
+                new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
+                _, log_div = tf.linalg.slogdet(new_K + tf.eye(size) * 10e-4)
+
+                total_loss = 0.5 * v_loss + p_loss + lamb * log_div
+
+            grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
+                                 + self.V.trainable_variables + self.dense_1.trainable_variables)
+
+            # x is used to track the gradient size
+            x = 0.0
+            c = 0.0
+            for gg in grad:
+                c += 1.0
+                x += tf.reduce_mean(tf.abs(gg))
+            x /= c
+
+            self.optim.apply_gradients(zip(grad, self.policy.trainable_variables + self.lstm.trainable_variables
+                                           + self.V.trainable_variables + self.dense_1.trainable_variables))
+
+            self.step.assign_add(1)
+            mean_entropy = tf.reduce_mean(ent)
+            min_entropy = tf.reduce_min(ent)
+            # max_entropy = tf.reduce_max(ent)
             return v_loss, mean_entropy, min_entropy, log_div, tf.reduce_min(
                 p_log), tf.reduce_max(p_log), x
 
