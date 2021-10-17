@@ -343,18 +343,24 @@ class AC(tf.keras.Model, Default):
                 ent = - tf.reduce_sum(tf.multiply(p_log, p), -1)
                 taken_p_log = tf.gather_nd(p_log, indices, batch_dims=0)
 
+
+
+                p_loss = - tf.reduce_mean( tf.stop_gradient(rho_mu) * taken_p_log
+                                           * tf.stop_gradient(targets[:, 1:]*gamma + rewards - v_all[:, :-1])
+                                           + alpha * ent)
+
+
+
+
                 if lamb != 0.:
                     behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
                     new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
                     _, log_div = tf.linalg.slogdet(new_K+tf.eye(size) * 10e-4)
+                    total_loss = 0.5 * v_loss + p_loss + lamb * log_div
+
                 else:
-                    log_div = 0.
+                    total_loss = 0.5 * v_loss + p_loss
 
-                p_loss = - tf.reduce_mean( tf.stop_gradient(rho_mu) * taken_p_log
-                                           * tf.stop_gradient(targets[:, 1:]*gamma + rewards - v_all[:, :-1])
-                                           + alpha * ent + lamb * log_div)
-
-                total_loss = 0.5 * v_loss + p_loss
 
             grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
                                  + self.V.trainable_variables + self.dense_1.trainable_variables)
