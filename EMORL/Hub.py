@@ -82,7 +82,7 @@ class Hub(Default, Logger):
         for i in range(self.BATCH_SIZE):
             for j in range(self.TRAJECTORY_LENGTH):
 
-                n_steps = np.random.randint(3,10)
+                n_steps = np.random.randint(3,6)
                 for _ in range(n_steps):
                     done, _ = dummy_env.step(np.random.choice(dummy_env.action_dim))
                     if done:
@@ -229,7 +229,7 @@ class Hub(Default, Logger):
             last_pub_time = time()
             self.reset_eval_queue()
             start_time = time()
-            lamb = self.lamb if np.random.random() < self.DvD_chance else 0.
+            lamb = self.lamb if np.random.random() < self.dvd_chance else 0.
             while time() - start_time < self.train_time:
                 self.recv_training_data()
                 perf = self.train(index, lamb)
