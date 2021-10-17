@@ -40,7 +40,7 @@ class Worker(Default):
 
         print(hidden_h.shape, hidden_c.shape)
 
-        self.trajectory['hidden_states'][:] = hidden_h, hidden_c
+        self.trajectory['hidden_states'][:] = np.concatenate([hidden_h,hidden_c], axis=0)
 
         signal.signal(signal.SIGINT, lambda frame, signal : sys.exit())
 
@@ -77,7 +77,7 @@ class Worker(Default):
                 self.player.genotype['brain'].lstm.reset_states()
         self.send_exp()
 
-        self.trajectory['hidden_states'][:] = hidden_h, hidden_c
+        self.trajectory['hidden_states'][:] = np.concatenate([hidden_h,hidden_c], axis=0)
 
     def __call__(self):
         for _ in range(30):
