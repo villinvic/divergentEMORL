@@ -38,9 +38,7 @@ class Worker(Default):
             'hidden_states': np.zeros((2, 128), dtype=np.float32),
         }
 
-        print(hidden_c, hidden_h)
-
-        self.trajectory['hidden_states'][:] = hidden_h, hidden_c
+        self.trajectory['hidden_states'][:, :] = hidden_h, hidden_c
 
         signal.signal(signal.SIGINT, lambda frame, signal : sys.exit())
 
