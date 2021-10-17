@@ -38,8 +38,6 @@ class Worker(Default):
             'hidden_states': np.zeros((2, 128), dtype=np.float32),
         }
 
-        print(hidden_h.shape, hidden_c.shape)
-
         self.trajectory['hidden_states'][:] = np.concatenate([hidden_h,hidden_c], axis=0)
 
         signal.signal(signal.SIGINT, lambda frame, signal : sys.exit())
