@@ -280,7 +280,7 @@ class AC(tf.keras.Model, Default):
         self.pattern = tf.expand_dims([tf.fill((self.TRAJECTORY_LENGTH-1,), i) for i in range(self.BATCH_SIZE)], axis=2)
 
     def train(self, index, parent_index, S, phi, K, l, size,
-              training_params, states, actions, rewards, probs, not_dones, gpu):
+              training_params, states, actions, rewards, probs, hidden_states, not_dones, gpu):
         # do some stuff with arrays
         # print(states, actions, rewards, dones)
         # Set both networks with corresponding initial recurrent state
@@ -289,7 +289,7 @@ class AC(tf.keras.Model, Default):
         v_loss, mean_entropy, min_entropy, div, min_logp, max_logp, grad_norm \
             = self._train(S, phi, K, tf.cast(training_params['lambda'],tf.float32), l, size, parent_index,
                           tf.cast(training_params['entropy_cost'], tf.float32),
-                          tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs, not_dones, gpu)
+                          tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs, hidden_states, not_dones, gpu)
 
         log_name = str(index)
         print(v_loss, div, mean_entropy, grad_norm, tf.reduce_sum(tf.reduce_mean(rewards, axis=0)))
@@ -312,7 +312,7 @@ class AC(tf.keras.Model, Default):
 
     @tf.function
     def _train(self, S, phi, K, lamb, l, size, parent_index,
-        alpha, gamma, states, actions, rewards, probs, not_dones, gpu):
+        alpha, gamma, states, actions, rewards, probs, hidden_states, not_dones, gpu):
         '''
         Main training function
         '''
@@ -322,7 +322,10 @@ class AC(tf.keras.Model, Default):
 
             with tf.GradientTape() as tape:
                 # Optimize the actor and critic
-                lstm_states = states
+                if self.has_lstm:
+                    lstm_states = self.lstm(states, initial_state=[hidden_states[:,0],hidden_states[:, 1]])
+                else:
+                    lstm_states = states
                 lstm_states = self.dense_1(lstm_states)
 
                 v_all = self.V(lstm_states)[: ,:, 0]
@@ -340,7 +343,7 @@ class AC(tf.keras.Model, Default):
                 ent = - tf.reduce_sum(tf.multiply(p_log, p), -1)
                 taken_p_log = tf.gather_nd(p_log, indices, batch_dims=0)
 
-                behavior_embedding = self.policy.get_probs(self.dense_1(S)[:, :-1])
+                behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
                 new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
                 _, log_div = tf.linalg.slogdet(new_K+tf.eye(size) * 10e-4)
 
@@ -350,7 +353,7 @@ class AC(tf.keras.Model, Default):
 
                 total_loss = 0.5 * v_loss + p_loss
 
-            grad = tape.gradient(total_loss, self.policy.trainable_variables
+            grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
                                  + self.V.trainable_variables + self.dense_1.trainable_variables)
 
             # x is used to track the gradient size
@@ -361,7 +364,7 @@ class AC(tf.keras.Model, Default):
                 x += tf.reduce_mean(tf.abs(gg))
             x /= c
 
-            self.optim.apply_gradients(zip(grad, self.policy.trainable_variables
+            self.optim.apply_gradients(zip(grad, self.policy.trainable_variables + self.lstm.trainable_variables
                                            + self.V.trainable_variables + self.dense_1.trainable_variables))
 
             self.step.assign_add(1)
@@ -466,14 +469,17 @@ class AC(tf.keras.Model, Default):
     @tf.function
     def get_distribution(self, states):
         with tf.device("/gpu:{}".format(0)):
-            x = self.dense_1(states)
+            x = self.lstm(states)
+            x = self.dense_1(x)
             x = self.policy.get_probs(x)
         return x
 
     @tf.function
-    def init_body(self, lstm):
+    def init_body(self, states):
         if self.has_lstm:
-            lstm = self.lstm(lstm)
+            lstm = self.lstm(states)
+        else:
+            lstm = states
         lstm = self.dense_1(lstm)
         x = self.policy.get_probs(lstm[:, 1:])
         self.V(lstm)

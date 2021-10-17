@@ -3,7 +3,9 @@ import numpy as np
 class Rewards:
     base = {
         'velocity': 1.,
-        'movement': 1.,
+        'near_target': 1.,
+        'exploration': 1.,
+        'time': 1.,
         'win': 1.,
     }
 
@@ -13,7 +15,7 @@ class Rewards:
     main = 'win'
 
 
-    def __init__(self, batch_size, trajectory_length, area_size, n_cyclones, n_exits):
+    def __init__(self, batch_size, trajectory_length, area_size, max_see, view_range):
 
         self.scores = {
             name : np.zeros((batch_size, trajectory_length-1), dtype=np.float32) for name, scale in self.base.items()
@@ -21,10 +23,9 @@ class Rewards:
 
         self.values = np.zeros((batch_size, trajectory_length-1), dtype=np.float32)
 
-        self.n_cyclones = n_cyclones
-        self.n_exits = n_exits
-        self.n_entities = n_exits + n_cyclones
+        self.max_see = max_see
         self.area_size = area_size
+        self.view_range = view_range
 
         self.dist = np.zeros((batch_size, trajectory_length-1), dtype=np.float32)
 
@@ -37,26 +38,19 @@ class Rewards:
     def compute(self, states, reward_shape, base_rewards):
 
 
+        self['time'][:,: ] = -1.0
+        self['velocity'] = np.sqrt(states[:, 1:, 6 * self.max_see + 2]**2 + states[:, 1:, 6 * self.max_see + 3]**2)
 
-        self['velocity'] = ( np.abs(states[:, 1:, 6 * self.n_entities + 2]) - np.abs(states[:, :-1, 6 * self.n_entities + 2])+
-                           np.abs(states[:, 1:, 6 * self.n_entities + 3]) - np.abs(states[:, :-1, 6 * self.n_entities + 3]))
+        self.dist[:, :] = states[:, 1:, 4] == 1.
+        self['near_target'] = np.float32(self.dist)
 
-        self.dist[:, :] = (np.sqrt((states[:, 1:, 6 * self.n_entities]-states[:, 1:, 0])**2+(states[:, 1:, 6 * self.n_entities+1]-states[:, 1:, 1])**2))\
-               - (np.sqrt((states[:, :-1, 6 * self.n_entities]-states[:, :-1, 0])**2+(states[:, :-1, 6 * self.n_entities+1]-states[:, :-1, 1])**2))
-
-        for i in range(1, self.n_exits):
-            self.dist[:, :] += np.sqrt((states[:, 1:, 6 * self.n_entities]-states[:, 1:, 6*i])**2+(states[:, 1:, 6 * self.n_entities+1]-states[:, 1:, 6*i +1])**2)\
-               - (np.sqrt((states[:, :-1, 6 * self.n_entities]-states[:, :-1, 6*i])**2+(states[:, :-1, 6 * self.n_entities+1]-states[:, :-1, 6*i+1])**2))
-
-        self['movement'] = -self.dist/self.n_exits
 
         self['win'][:, :] = base_rewards
 
-        #mask = reward_shape['win'] == 0.
-        #self['movement'][mask] = 0.
-        #self['velocity'][mask] = 0.
+        self['exploration'] = (-np.sqrt((states[:, 1:, 6 * self.max_see])**2+(states[:, 1:, 6 * self.max_see+1])**2)\
+               + np.sqrt((states[:, :-1, 6 * self.max_see])**2+(states[:, :-1, 6 * self.max_see+1])**2))
 
-        self.values[:, :] = np.sum([self[event]*reward_shape[event]/state_scale for event, state_scale in self.base.items()], axis=0) - 0.001
+        self.values[:, :] = np.sum([self[event]*reward_shape[event]/state_scale for event, state_scale in self.base.items()], axis=0)
 
         performance = np.sum(np.mean(base_rewards/self.base[self.main], axis=0))
 

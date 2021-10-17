@@ -7,7 +7,7 @@ def log_uniform(low=0, high=1, size=None, base=10):
     high = np.log(high + 1e-8)/np.log(base)
     return np.power(base, np.random.uniform(low, high, size))
 
-def uniform_with_hole(low=55, high=200):
+def uniform_with_hole(low=70, high=200):
     angle = np.random.uniform(0, 2*np.pi)
     r = np.random.uniform(low, high)
     x = np.cos(angle) * r

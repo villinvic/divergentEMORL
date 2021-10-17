@@ -27,13 +27,18 @@ class Worker(Default):
         self.exp_socket = c.socket(zmq.PUSH)
         self.exp_socket.connect("tcp://%s:%d" % (hub_ip, self.EXP_PORT))
 
+        hidden_h, hidden_c = self.player.genotype['brain'].init_body(np.zeros((1,1, self.game.state_dim), dtype=np.float32))
+
 
         self.trajectory = {
             'state' : np.zeros((self.TRAJECTORY_LENGTH, self.game.state_dim), dtype=np.float32),
             'action' : np.zeros((self.TRAJECTORY_LENGTH,), dtype=np.int32),
             'probs': np.zeros((self.TRAJECTORY_LENGTH, self.game.action_dim), dtype=np.float32),
             'win': np.zeros((self.TRAJECTORY_LENGTH,), dtype=np.float32),
+            'hidden_states': np.zeros((2, 128), dtype=np.float32),
         }
+
+        self.trajectory['hidden_states'][:] = hidden_h, hidden_c
 
         signal.signal(signal.SIGINT, lambda frame, signal : sys.exit())
 
@@ -61,11 +66,16 @@ class Worker(Default):
             self.trajectory['state'][index, :] = s
             self.trajectory['action'][index] = action_id
             self.trajectory['probs'][index] = distribution
-            self.trajectory['win'][index] = win
             done, win = self.game.step(action_id)
+            self.trajectory['win'][index] = win
+
 
             if done :
                 self.game.reset()
+                self.player.genotype['brain'].lstm.reset_states()
+        self.send_exp()
+
+        self.trajectory['hidden_states'][:] = hidden_h, hidden_c
 
     def __call__(self):
         for _ in range(30):
@@ -78,7 +88,6 @@ class Worker(Default):
         c = 0
         while True:
             self.play_trajectory()
-            self.send_exp()
             c += 1
             self.get_params()
 

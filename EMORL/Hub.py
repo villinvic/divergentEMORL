@@ -20,6 +20,15 @@ from logger.Logger import Logger
 class Hub(Default, Logger):
     def __init__(self, ip='127.0.0.1', ckpt=''):
         super(Hub, self).__init__()
+
+        os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+        gpus = tf.config.experimental.list_physical_devices('GPU')
+        print(gpus)
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        tf.summary.experimental.set_step(0)
+
         dummy_env = Game()
         self.max_entropy = np.log(dummy_env.action_dim)
 
@@ -47,7 +56,7 @@ class Hub(Default, Logger):
         self.eval_queue = np.full((30,), fill_value=np.nan, dtype=np.float32)
         self.eval_index = 0
 
-        self.rewards = Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.n_cyclones, dummy_env.n_exits)
+        self.rewards = Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.max_see, dummy_env.view_range)
 
         c = zmq.Context()
         self.blob_socket = c.socket(zmq.PUB)
@@ -127,6 +136,7 @@ class Hub(Default, Logger):
             actions = np.float32(np.stack(trajectory[:, 1], axis=0)[:, :-1])
             probs = np.float32(np.stack(trajectory[:, 2], axis=0)[:, :-1])
             wins = np.float32(np.stack(trajectory[:, 3], axis=0)[:, :-1])
+            hidden_states = np.float32(np.stack(trajectory[:, 4], axis=0))
             rews, performance = self.rewards.compute(states, self.offspring_pool[index].genotype['experience'], wins)
 
             # landmark distributions
@@ -139,7 +149,7 @@ class Hub(Default, Logger):
                                                                        self.policy_kernel, self.similarity_l,
                                                                        self.pop_size,
                                                                        self.offspring_pool[index].genotype['learning'],
-                                                                       states, actions, rews, probs, 1.-np.abs(wins), 0)
+                                                                       states, actions, rews, probs, hidden_states, 1.-np.abs(wins), 0)
             self.train_cntr += 1
             tf.summary.experimental.set_step(self.train_cntr)
 

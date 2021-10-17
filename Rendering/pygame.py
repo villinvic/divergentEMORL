@@ -40,13 +40,14 @@ class PyGameEngine:
         self.display = pygame.display.set_mode((800,800))
         self.display.fill(WHITE)
         self.player = Player()
-        for c in cyclones[:-1]:
+        for c in cyclones:
             color = GREEN if c.nature == 1 else RED
             pygame.draw.circle(self.display, list(255-color*c.power*0.5), c.pos*2+400, c.ray*2)
-        for c in cyclones[:-1]:
+        for c in cyclones:
             color = GREEN if c.nature == 1 else DANGER
             pygame.draw.circle(self.display, color, c.pos*2+400, c.deadly_ray*2)
         pygame.draw.circle(self.display, BLACK, (400,400), area_size*2, width=3)
+        self.bg = self.display.copy()
 
         self.human = human
 
@@ -59,8 +60,10 @@ class PyGameEngine:
 
 
     def update(self, x, y):
+        self.display.blit(self.bg, (0,0))
         self.player.update(400+x*2, 400+y*2)
         self.player.draw(self.display)
+        pygame.draw.circle(self.display, BLACK, (400+x*2,400+y*2), 120, width=1)
         for event in pygame.event.get():
             if event.type == QUIT:
                 pygame.quit()
