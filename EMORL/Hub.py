@@ -182,7 +182,6 @@ class Hub(Default, Logger):
                 self.compute_uniqueness()
                 self.logger.info('Selecting...')
                 self.select()
-                self.eliminate_garbage()
                 self.save()
 
         except KeyboardInterrupt:
