@@ -420,7 +420,7 @@ class AC(tf.keras.Model, Default):
                 new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
                 _, log_div = tf.linalg.slogdet(new_K + tf.eye(size) * 10e-4)
 
-                total_loss = 0.5 * v_loss + p_loss + lamb * log_div
+                total_loss = 0.5 * v_loss + p_loss - lamb * log_div
 
             grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
                                  + self.V.trainable_variables + self.dense_1.trainable_variables)
