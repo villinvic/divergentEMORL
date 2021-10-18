@@ -13,13 +13,42 @@ class Population:
         self.size = size
         self.checkpoint_index = 0
         self.n = 0
+        self.diversity = 0
         self.dims = (input_dim, output_dim)
 
         self.to_serializable_v = np.vectorize(lambda individual: individual.get_all())
         self.read_pickled_v = np.vectorize(lambda individual, x: individual.set_all(x))
 
         self.stats = {
+            'entropy': [],
+            'performance': [],
+            'diversity': [],
+            'hyperparameter':
+                {
+                    'learning': [],
+                    'experience': [],
+                }
+            ,
         }
+
+    def register_generation(self):
+        entropy = []
+        performance = []
+        learning = []
+        experience = []
+
+        for individual in self:
+            entropy.append(individual.mean_entropy)
+            performance.append(individual.performance)
+            learning.append(individual.genotype['learning'].copy())
+            experience.append(individual.genotype['experience'].copy())
+
+        self.stats['entropy'].append(entropy)
+        self.stats['performance'].append(performance)
+        self.stats['hyperparameter']['learning'].append(learning)
+        self.stats['hyperparameter']['experience'].append(experience)
+        self.stats['diversity'].append(self.diversity)
+
 
     def __getitem__(self, item):
         return self.individuals[item]
@@ -53,15 +82,17 @@ class Population:
         self.read_pickled_v(self.individuals[:self.size], params)
 
     def save(self, path):
+        self.register_generation()
         for index, individual in enumerate(self):
             with open(path + str(index) + '.pkl',
                       'wb+') as f:
                 pickle.dump(individual.get_all(), f)
-        with open(path + 'population.params', 'w') as json_file:
-            json.dump({
+        with open(path + 'population.params', 'wb+') as param_file:
+            pickle.dump({
             "size": int(self.size),
             "checkpoint_index": int(self.checkpoint_index),
-        }, json_file)
+            "stats": self.stats,
+        }, param_file)
 
     def load(self, path):
         if path[-1] != '/':
@@ -82,8 +113,8 @@ class Population:
                     print(e)
         try:
             with open(path + 'population.params',
-                      'r') as json_file:
-                params = json.load(json_file)
+                      'rb') as param_file:
+                params = pickle.load(param_file)
             for param_name, value in params.items():
                 setattr(self, param_name, value)
         except Exception as e:

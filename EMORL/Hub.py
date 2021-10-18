@@ -10,7 +10,7 @@ import os
 from EMORL.Population import Population
 from EMORL.misc import policy_similarity
 from EMORL.MOO import ND_sort
-from EMORL.plotting import plot_stats
+from EMORL.plotting import plot_perf_uniq, plot_stats
 from Game.core import Game
 from Game.rewards import Rewards
 from config.Loader import Default
@@ -120,9 +120,9 @@ class Hub(Default, Logger):
                 else:
                     self.policy_kernel[i, j] = policy_similarity(self.behavior_embeddings[i], self.behavior_embeddings[j],
                                                                  l=self.similarity_l)
-        div = np.linalg.det(self.policy_kernel)
-        self.logger.info('Population Diversity = %.3f' % div)
+        _, div = np.linalg.slogdet(self.policy_kernel)
         print(self.policy_kernel)
+        self.population.diversity = div
         return div
 
     def train(self, index):
@@ -228,6 +228,9 @@ class Hub(Default, Logger):
             last_pub_time = time()
             self.reset_eval_queue()
             start_time = time()
+            for _ in range(6):
+                self.recv_training_data()
+            del self.exp[:]
             while time() - start_time < self.train_time:
                 self.recv_training_data()
                 perf = self.train(index)
@@ -299,7 +302,7 @@ class Hub(Default, Logger):
         # get stats of selection...
         full_path = 'checkpoints/' + self.running_instance_id + '/ckpt_' + str(
             self.population.checkpoint_index) + '/'
-        plot_stats(self.perf_and_uniqueness[:, :, 0], selected, self.population, full_path)
+        plot_perf_uniq(self.perf_and_uniqueness[:, :, 0], selected, self.population, full_path)
 
         print(self.perf_and_uniqueness[:, selected, 0])
 
@@ -326,6 +329,7 @@ class Hub(Default, Logger):
 
         # plot scores (perf in function of kl, gene values, behavior stats...)
         self.population.save(full_path)
+        # plot_stats(self.population, full_path)
 
         _, dirs, _ = next(os.walk(ckpt_path))
 
