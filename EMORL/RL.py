@@ -279,16 +279,16 @@ class AC(tf.keras.Model, Default):
                                      axis=2)
         self.pattern = tf.expand_dims([tf.fill((self.TRAJECTORY_LENGTH-1,), i) for i in range(self.BATCH_SIZE)], axis=2)
 
-    def train(self, index, parent_index, S, phi, K, l, DvD_lamb, size,
+    def train(self, index, parent_index, S, phi, K, l, size,
               training_params, states, actions, rewards, probs, hidden_states, not_dones, gpu):
         # do some stuff with arrays
         # print(states, actions, rewards, dones)
         # Set both networks with corresponding initial recurrent state
         self.optim.learning_rate.assign(training_params['learning_rate'])
 
-        if DvD_lamb > 0:
+        if training_params['dvd_lamb'] > 0:
             v_loss, mean_entropy, min_entropy, div, min_logp, max_logp, grad_norm \
-                = self._train_DvD(S, phi, K, tf.cast(DvD_lamb, tf.float32), l, size, parent_index,
+                = self._train_DvD(S, phi, K, tf.cast(training_params['dvd_lamb'], tf.float32), l, size, parent_index,
                               tf.cast(training_params['entropy_cost'], tf.float32),
                               tf.cast(training_params['gamma'], tf.float32), states, actions, rewards, probs,
                               hidden_states, not_dones, gpu)

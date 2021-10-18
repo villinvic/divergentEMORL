@@ -125,7 +125,7 @@ class Hub(Default, Logger):
         print(self.policy_kernel)
         return div
 
-    def train(self, index, DvD_lamb):
+    def train(self, index):
         if len(self.exp) >= self.BATCH_SIZE:
             # Get experience from the queue
             trajectory = pd.DataFrame(self.exp[:self.BATCH_SIZE]).values
@@ -146,7 +146,7 @@ class Hub(Default, Logger):
                 self.offspring_pool[index].mean_entropy = \
                     self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectories,
                                                                        self.behavior_embeddings[:self.pop_size],
-                                                                       self.policy_kernel, self.similarity_l, DvD_lamb,
+                                                                       self.policy_kernel, self.similarity_l,
                                                                        self.pop_size,
                                                                        self.offspring_pool[index].genotype['learning'],
                                                                        states, actions, rews, probs, hidden_states, 1.-np.abs(wins), 0)
@@ -228,10 +228,9 @@ class Hub(Default, Logger):
             last_pub_time = time()
             self.reset_eval_queue()
             start_time = time()
-            lamb = self.lamb if np.random.random() < self.dvd_chance else 0.
             while time() - start_time < self.train_time:
                 self.recv_training_data()
-                perf = self.train(index, lamb)
+                perf = self.train(index)
                 if perf is not None:
                     self.eval_queue[self.eval_index % len(self.eval_queue)] = perf
                     self.eval_index += 1
