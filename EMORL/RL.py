@@ -286,9 +286,9 @@ class AC(tf.keras.Model, Default):
         # Set both networks with corresponding initial recurrent state
         self.optim.learning_rate.assign(training_params['learning_rate'])
 
-        if training_params['dvd_lamb'] > 0:
+        if training_params['dvd_lambda'] > 0:
             v_loss, mean_entropy, min_entropy, div, min_logp, max_logp, grad_norm \
-                = self._train_DvD(S, phi, K, tf.cast(training_params['dvd_lamb'], tf.float32), l, size, parent_index,
+                = self._train_DvD(S, phi, K, tf.cast(training_params['dvd_lambda'], tf.float32), l, size, parent_index,
                               tf.cast(training_params['entropy_cost'], tf.float32),
                               tf.cast(training_params['gamma'], tf.float32), states, actions, rewards, probs,
                               hidden_states, not_dones, gpu)
