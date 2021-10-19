@@ -56,15 +56,15 @@ def plot_stats(population, path):
     plt.style.use(['science', 'ieee'])
     plt.clf()
 
-    x = np.empty((population.size,), dtype=np.float32)
+    #x = np.empty((population.size,), dtype=np.float32)
     index = 0
     r = 3
     c = 5
 
-    dx, dy = 2, 2
-    figsize = plt.figaspect(float(dy * r) / float(dx * c))
+    dx, dy = 1, 1
+    h, w = plt.figaspect(float(dy * r) / float(dx * c))
 
-    fig, plots = plt.subplots(r, c, figsize=figsize)
+    fig, plots = plt.subplots(r, c, figsize=(h*4, w*4))
 
 
 
@@ -79,11 +79,14 @@ def plot_stats(population, path):
             mins = []
             maxes = []
             for generation in population.stats['hyperparameter'][hyperparameter]:
+                x = [None] * population.size
                 for i in range(population.size):
                     x[i] = generation[i][name]
+                print(means)
                 means.append(np.mean(x))
                 mins.append(np.min(x))
                 maxes.append(np.max(x))
+
 
             plot.plot(np.arange(len(means)), means, label='Mean')
             plot.plot(np.arange(len(means)), mins, label='Min')
@@ -123,11 +126,6 @@ def plot_stats(population, path):
     plot.plot(np.arange(len(population.stats['diversity'])), population.stats['diversity'], label='Mean')
     plot.set_ylabel('Diversity')
     plot.set_xlabel('Iterations')
-
-
-    for i in range(r):
-        for j in range(c):
-            plots[i][j].set_aspect('equal', adjustable='box')
 
     print('ok')
     fig.savefig(path + 'stats.png')

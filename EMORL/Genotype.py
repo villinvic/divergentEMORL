@@ -73,9 +73,11 @@ class Genotype(Default):
         if trainable:
             self._genes['brain'].set_training_params(new_genes['brain'])
         else:
-            for key in self._base_keys:
-                self._genes[key] = new_genes[key]
             self._genes['brain'].set_params(new_genes['brain'])
+
+        for key in self._base_keys:
+            self._genes[key] = new_genes[key]
+
 
 
     def __repr__(self):
