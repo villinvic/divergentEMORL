@@ -87,8 +87,8 @@ class Game(Default):
 
 
         self.state[(self.n_exits+self.n_cyclones)*6+4: -1] = self.state[(self.n_exits+self.n_cyclones)*6: -5]
-        self.state[self.indexes['player_x']] += self.state[self.indexes['inertia_x']]
-        self.state[self.indexes['player_y']] += self.state[self.indexes['inertia_y']]
+        self.state[self.indexes['player_x']] += self.state[self.indexes['inertia_x']] * 1.25
+        self.state[self.indexes['player_y']] += self.state[self.indexes['inertia_y']] * 1.25
 
         if self.is_out():
             return True, -1

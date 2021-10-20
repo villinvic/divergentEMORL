@@ -82,7 +82,6 @@ def plot_stats(population, path):
                 x = [None] * population.size
                 for i in range(population.size):
                     x[i] = generation[i][name]
-                print(means)
                 means.append(np.mean(x))
                 mins.append(np.min(x))
                 maxes.append(np.max(x))
