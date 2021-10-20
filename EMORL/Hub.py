@@ -263,8 +263,8 @@ class Hub(Default, Logger):
         for individual_index in range(self.pop_size+self.n_offspring):
             distance = 0
             if individual_index not in failed_indexes:
-                for individual2_index in range(self.pop_size+self.n_offspring):
-                    if individual_index != individual2_index and individual2_index not in failed_indexes:
+                for individual2_index in range(self.pop_size):
+                    if individual_index != individual2_index:
                         distance += 1. - policy_similarity(self.behavior_embeddings[individual_index],
                                                    self.behavior_embeddings[individual2_index], self.similarity_l)
                 distance /= (self.pop_size+self.n_offspring-1)
@@ -281,8 +281,8 @@ class Hub(Default, Logger):
 
         sorted_args = np.argsort(self.perf_and_uniqueness[0, :, 0])
         for index in sorted_args[:len(sorted_args)//2]:
-            if self.perf_and_uniqueness[0, index, 0] < np.nanmean(self.perf_and_uniqueness[0, :, 0])\
-                    - 3 * np.nanstd(self.perf_and_uniqueness[0, :, 0]):
+            if self.perf_and_uniqueness[0, index, 0] < np.nanmean(self.perf_and_uniqueness[0, :self.pop_size, 0])\
+                    - 3 * np.nanstd(self.perf_and_uniqueness[0, :self.pop_size, 0]):
 
                 self.perf_and_uniqueness[0, index, 0] = -np.inf
                 self.perf_and_uniqueness[1, index, 0] = 0.
