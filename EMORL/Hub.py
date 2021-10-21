@@ -263,8 +263,8 @@ class Hub(Default, Logger):
         for individual_index in range(self.pop_size+self.n_offspring):
             distance = 0
             if individual_index not in failed_indexes:
-                for individual2_index in range(self.pop_size):
-                    if individual_index != individual2_index:
+                for individual2_index in range(self.pop_size+self.n_offspring):
+                    if individual_index != individual2_index and individual2_index not in failed_indexes:
                         distance += 1. - policy_similarity(self.behavior_embeddings[individual_index],
                                                    self.behavior_embeddings[individual2_index], self.similarity_l)
                 distance /= (self.pop_size+self.n_offspring-1)
