@@ -39,6 +39,7 @@ class Rewards:
 
 
         self['time'][:,: ] = -1.0
+
         self['velocity'] = np.sqrt(states[:, 1:, 6 * self.max_see + 2]**2 + states[:, 1:, 6 * self.max_see + 3]**2) - 0.2
 
         self.dist[:, :] = states[:, 1:, 4] == 1.

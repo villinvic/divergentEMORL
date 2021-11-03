@@ -9,6 +9,7 @@ import signal
 
 from config.Loader import Default
 from Game.core import Game
+#from Gym.Mujoco import MujocoEnv
 from EMORL.Individual import Individual
 
 
@@ -16,9 +17,9 @@ class Worker(Default):
     def __init__(self, render=False, hub_ip='127.0.0.1'):
         self.render = render
         super(Worker, self).__init__()
-        self.game = Game(render)
+        self.game =  Game(render)
         self.player = Individual(-1, self.game.state_dim, self.game.action_dim, [])
-
+        #self.player = Individual(-1, self.game.env.observation_space.shape[0], self.game.env.action_space.shape[0], [])
 
         c = zmq.Context()
         self.blob_socket = c.socket(zmq.SUB)
@@ -35,6 +36,7 @@ class Worker(Default):
             'action' : np.zeros((self.TRAJECTORY_LENGTH,), dtype=np.int32),
             'probs': np.zeros((self.TRAJECTORY_LENGTH, self.game.action_dim), dtype=np.float32),
             'win': np.zeros((self.TRAJECTORY_LENGTH,), dtype=np.float32),
+            #'reward': np.zeros((self.TRAJECTORY_LENGTH, self.game.n_rewards), dtype=np.float32),
             'hidden_states': np.zeros((2, 128), dtype=np.float32),
         }
 
@@ -57,18 +59,18 @@ class Worker(Default):
         self.exp_socket.send_pyobj(self.trajectory)
 
     def play_trajectory(self):
-        win = 0
         for index in range(self.TRAJECTORY_LENGTH):
             if self.render:
                 self.game.render()
             s = self.game.state / self.game.scales
-            action_id, distribution, hidden_h, hidden_c = self.player.policy(s)
+            action_id, distribution, hidden_h, hidden_c = self.player.policy(self.game.state)
             self.trajectory['state'][index, :] = s
             self.trajectory['action'][index] = action_id
             self.trajectory['probs'][index] = distribution
             done, win = self.game.step(action_id)
+            #perf, done, reward = self.game.step(action_id)
             self.trajectory['win'][index] = win
-
+            #self.trajectory['reward'][index] = reward
 
             if done :
                 self.game.reset()

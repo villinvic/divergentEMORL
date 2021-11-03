@@ -12,7 +12,10 @@ from EMORL.misc import policy_similarity
 from EMORL.MOO import ND_sort
 from EMORL.plotting import plot_perf_uniq, plot_stats
 from Game.core import Game
+#from Gym.Mujoco import MujocoEnv
 from Game.rewards import Rewards
+#from Gym.rewards import MujocoRewards
+#from Gym.rewards import MujocoRewards
 from config.Loader import Default
 from logger.Logger import Logger
 
@@ -82,7 +85,7 @@ class Hub(Default, Logger):
         for i in range(self.BATCH_SIZE):
             for j in range(self.TRAJECTORY_LENGTH):
 
-                n_steps = np.random.randint(3,6)
+                n_steps = np.random.randint(1,5)
                 for _ in range(n_steps):
                     done, _ = dummy_env.step(np.random.choice(dummy_env.action_dim))
                     if done:
@@ -136,10 +139,12 @@ class Hub(Default, Logger):
             actions = np.float32(np.stack(trajectory[:, 1], axis=0)[:, :-1])
             probs = np.float32(np.stack(trajectory[:, 2], axis=0)[:, :-1])
             wins = np.float32(np.stack(trajectory[:, 3], axis=0)[:, :-1])
+            #rewards = np.float32(np.stack(trajectory[:, 5], axis=0)[:, :-1])
             hidden_states = np.float32(np.stack(trajectory[:, 4], axis=0))
             rews, performance = self.rewards.compute(states, self.offspring_pool[index].genotype['experience'], wins)
+            #rews = self.rewards.compute(rewards, self.offspring_pool[index].genotype['experience'], wins)
+            #performance = np.sum(np.mean(wins, axis=0))
 
-            # landmark distributions
             # Train
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
 
@@ -149,7 +154,7 @@ class Hub(Default, Logger):
                                                                        self.policy_kernel, self.similarity_l,
                                                                        self.pop_size,
                                                                        self.offspring_pool[index].genotype['learning'],
-                                                                       states, actions, rews, probs, hidden_states, 1.-np.abs(wins), 0)
+                                                                       states, actions, rews, probs, hidden_states, 0)
             self.train_cntr += 1
             tf.summary.experimental.set_step(self.train_cntr)
 

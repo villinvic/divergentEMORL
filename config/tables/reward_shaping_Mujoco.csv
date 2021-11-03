@@ -1,0 +1,7 @@
+name, lower_bound, higher_bound
+"reward_forward", 0.0001, 0.01
+"reward_ctrl", 0.0001, 0.01
+"reward_contact", 0.0001, 0.01
+"reward_survive", 0.0001, 0.01
+"velocity", 0.0001, 0.01
+"perf", 0.0001, 0.01

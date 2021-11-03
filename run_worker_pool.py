@@ -28,7 +28,7 @@ def run_many(n_arenas=1,
 
     def start():
         for ID in range(n_arenas):
-            procs[ID] = Popen(cmd.format(hub_ip=hub_ip, render=(render and ID == n_arenas-1)).split(),
+            procs[ID] = Popen(cmd.format(hub_ip=hub_ip, render=(render and ID == 0)).split(),
                               env=dict(os.environ, PYTHONPATH=os.getcwd()))
 
     def close():
