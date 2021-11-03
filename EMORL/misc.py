@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.preprocessing import StandardScaler
 
 
 def log_uniform(low=0, high=1, size=None, base=10):
@@ -21,36 +22,71 @@ def policy_similarity(a, b, l=1):
     return np.exp(-kl_divergence(a, b)**2/(2 * l ** 2))
 
 
-def nn_crossover(a, b):
-    offspring = []
-    Wd = None
-    for d, (ax, bx) in enumerate(zip(a,b)):
-        Wd, Wdm1 = layer_crossover(ax, bx, d, Wd)
-        offspring.append(safe_crossover(*np.rollaxis(Wdm1, 0)))
+def nn_crossover(a, b, architecture={}):
+    pairs = [pairwise_cross_corr(ax, bx) for ax,bx in zip(a,b)]
+    for x in pairs:
+        print(np.max(x))
+    W_permuted = [np.zeros((2,)+ax.shape, dtype=np.float32) for ax in a]
+    for layer_index, previous_index in architecture.items():
+        print(layer_index, previous_index)
+        if previous_index is not None:
+            W_permuted[layer_index][:, :-1, :] = a[layer_index][pairs[previous_index][0], :], b[layer_index][pairs[previous_index][1], :]
 
+        layer_crossover(a, b, pairs[layer_index], layer_index, previous_index, W_permuted[layer_index])
+
+    offspring = [(safe_crossover(*np.rollaxis(W_permuted[d], 0))) for d in range(len(a))]
 
     return offspring
 
 
-def layer_crossover(ax, bx, d, Wd=None):
-    if Wd is None:
-        Wd = np.empty((2,)+ax.shape, dtype=np.float32)
-    Wdp1 = np.empty((2,)+ax.shape, dtype=np.float32)
-    l = get_indice_pairs(ax, bx)
-    if d == 0:
-        print(Wd.shape, ax[:, l[0]].shape)
-        Wd[:] = ax[:, l[0]], bx[:, l[1]]
+def layer_crossover(a, b, pairs, layer_index, previous_index, permuted):
+    ax = a[layer_index]
+    bx = b[layer_index]
+
+    if previous_index is None:
+        permuted[:] = ax[:, pairs[0]], bx[:, pairs[1]]
     else:
-        print(Wd.shape, l.shape)
-        Wd[:] = Wd[:, l]
-    Wdp1[:] = ax[l, :]
+        permuted[:] = permuted[0][:, pairs[0]], permuted[1][:, pairs[1]]
 
-    return Wdp1, Wd
 
+def pairwise_cross_corr(La, Lb):
+    n = La.shape[1]
+    m = np.empty((n, n), dtype=np.float32)
+    scaler = StandardScaler()
+    n_La = scaler.fit_transform(La)
+    n_Lb = scaler.fit_transform(Lb)
+
+    for i in range(len(m)):
+        for j in range(len(m)):
+            m[i, j] = np.corrcoef(n_La[:, i], n_Lb[:, j])[0,1]
+
+    m[np.isnan(m)] = -1
+    argmax_columns = np.flip(np.argsort(m, axis=0), axis=0)
+    dead_neurons = np.sum(m, axis=0) == - n
+
+    pairs = np.full((2, n), fill_value=np.nan, dtype=np.int32)
+    pairs[1:] = np.arange(n)
+    index_add = 0
+
+    for index in range(n):
+        if not dead_neurons[index]:
+            for count in range(n):
+                if argmax_columns[count, index] not in pairs[0]:
+                    pairs[0, index_add] = argmax_columns[count, index]
+                    index_add += 1
+                    break
+
+    for index in range(n):
+        if index not in pairs[0] and index_add < n:
+            pairs[0, index_add] = index
+            index_add += 1
+
+    print(pairs)
+    return pairs
 
 
 def get_indice_pairs(ax, bx):
-    l = np.empty((2, len(ax)), dtype=np.int32)
+    l = np.empty((2,len(ax)), dtype=np.int32)
     for index in range(len(ax)):
         sm = np.abs(np.min(ax[index]) + np.min(bx[index]))
         sp = np.abs(np.max(ax[index]) + np.max(bx[index]))
@@ -69,14 +105,166 @@ def safe_crossover(ax, bx):
     return (1-t) * ax + t * bx
 
 
+class MovingAverage:
+    def __init__(self, length, last_k=None):
+        if last_k is None:
+            self.last_k = int(length * 0.2)
+        else:
+            self.last_k = last_k
+
+        self.length = length
+        self.trend_count = 0
+        self.index = 0
+        self.values = np.full((length,), np.nan, dtype=np.float32)
+        self.moving_avg = np.full((length,), np.nan, dtype=np.float32)
+
+    def __call__(self):
+        return np.nanmean(self.values.take( np.arange((self.index%self.length)-self.last_k, self.index%self.length), mode='wrap'))
+
+    def push(self, x):
+        self.values[self.index % self.length] = x
+        self.moving_avg[self.index % self.length] = np.nanmean(self.values)
+        self.index += 1
+        if self.index > self.last_k:
+            trend = np.sign(self.trend())
+            if trend != np.sign(self.trend_count):
+                self.trend_count = 0
+            self.trend_count += trend
+
+    def reset(self):
+        self.__init__(self.length)
+
+    def trend(self):
+        indexes = np.arange(self.last_k)
+        values = self.values.take(np.arange((self.index%self.length)-self.last_k, self.index%self.length), mode='wrap')
+        args = np.argwhere(np.logical_not(np.isnan(values))).flatten()
+        return np.float32(np.polyfit(indexes[args], values[args], 1)[-2])
+
 if __name__ == '__main__':
-    a = []
-    b = []
-    for _ in range(3):
-        a.append(np.random.uniform(-1,1, size=(257, 256)))
-        b.append(np.random.uniform(-1, 1, size=(257, 256)))
+
+    from EMORL.Individual import Individual
+    import os
+    import tensorflow as tf
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    print(gpus)
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
+    tf.summary.experimental.set_step(0)
+
+    s = np.random.random((256, 80, 100))
+    a = Individual(0, 100, 32, [], trainable=True)
+    b = Individual(0, 100, 32, [], trainable=True)
+    c = Individual(0, 100, 32, [], trainable=True)
+
+    c.inerit_from(a, b)
+    a_out = a.genotype['brain'].policy.get_probs(a.genotype['brain'].dense_1(a.genotype['brain'].lstm(s)))
+    b_out = b.genotype['brain'].policy.get_probs(b.genotype['brain'].dense_1(b.genotype['brain'].lstm(s)))
+    c_out = c.genotype['brain'].policy.get_probs(c.genotype['brain'].dense_1(c.genotype['brain'].lstm(s)))
+
+    for i, one in enumerate([a_out, b_out, c_out]):
+        for j, two in enumerate([a_out, b_out, c_out]):
+            if i != j and i < j:
+                print((i, j), policy_similarity(one, two, 1000))
 
 
-    c = nn_crossover(a,b)
 
-    print(a,b,c)
+    """
+    
+    for nn in [a,b,c]:
+        nn.init_body(np.zeros((256,80,100)))
+
+    a_w = a.get_training_params()
+    a_w['actor_head'][1][:] += 1.0
+    a_w['dense_1'][0][30:150] -= 0.1
+    a.set_training_params(a_w)
+    b_w = b.get_training_params()
+
+    l = []
+    for w in [a_w, b_w]:
+        l.append([])
+        for layer_name, weights in w.items():
+            if 'core' in layer_name:
+                for sub_layer in weights:
+                    l[-1].append(sub_layer[0])
+                    l[-1][-1] =  np.concatenate([l[-1][-1], sub_layer[1][np.newaxis]], axis=0)
+            else:
+                if 'lstm' in layer_name:
+                    l[-1].append(weights[0][:, :weights[0].shape[1]*3//4])
+                    l[-1].append(weights[0][:, weights[0].shape[1]*3//4:])
+                    l[-1].append(weights[1])
+                    l[-1][-3] = np.concatenate([l[-1][-3], weights[-1][np.newaxis,:weights[0].shape[1]*3//4]], axis=0)
+                    l[-1][-2] = np.concatenate([l[-1][-2], weights[-1][np.newaxis, weights[0].shape[1] * 3 // 4:]],
+                                               axis=0)
+                else:
+                    l[-1].append(weights[0])
+                    l[-1][-1] =  np.concatenate([l[-1][-1], weights[1][np.newaxis]], axis=0)
+
+    crossovered = nn_crossover(*l, architecture={
+        0:None, 1:None, 2:None, 3:1, 4:3, 5:4, 6:3, 7:6
+    })
+
+    c_w = deepcopy(a_w)
+
+    count = 0
+    for layer_name, weights in c_w.items():
+        print(layer_name)
+        if 'core' in layer_name:
+            for sub_layer_i in range(len(weights)):
+                weights[sub_layer_i][0][:] = crossovered[count][:-1]
+                weights[sub_layer_i][1][:] = crossovered[count][-1]
+                count += 1
+        else:
+            if 'lstm' in layer_name:
+                print(weights[0].shape)
+                weights[0][:, :weights[0].shape[1] * 3 // 4] = crossovered[count][:-1]
+                weights[-1][:weights[0].shape[1] * 3 // 4] = crossovered[count][-1]
+                count += 1
+                weights[0][:, weights[0].shape[1] * 3 // 4:] = crossovered[count][:-1]
+                weights[-1][weights[0].shape[1] * 3 // 4:] = crossovered[count][-1]
+                count += 1
+                weights[1][:] = crossovered[count]
+                count += 1
+
+            else:
+                weights[0][:] = crossovered[count][:-1]
+                weights[1][:] = crossovered[count][-1]
+                count += 1
+
+    c.set_training_params(c_w)
+
+    a_out = a.policy.get_probs(a.dense_1(a.lstm(s)))
+    b_out = b.policy.get_probs(b.dense_1(b.lstm(s)))
+    c_out = c.policy.get_probs(c.dense_1(c.lstm(s)))
+
+    for i, one in enumerate([a_out, b_out, c_out]):
+        for j, two in enumerate([a_out, b_out, c_out]):
+            if i != j and i < j:
+                print((i,j), policy_similarity(one,two, 1000))
+
+
+
+    d = 8
+    coefs = np.random.normal(size=d)
+    for i in range(d):
+        coefs[i]*= 0.005 ** i
+
+    x = np.array([ sum([c * x**i for i, c in enumerate(coefs)]) for x in range(-150, 150)])
+    x *= np.random.random(x.shape) + 0.1
+    mving = MovingAverage(300)
+    for i, d in enumerate(x):
+        mving.push(d)
+        print(i, mving.trend_count)
+
+    print(mving(), mving.trend())
+
+    import matplotlib.pyplot as plt
+
+    plt.plot(x)
+    plt.draw()
+    plt.show()
+    """
+
+

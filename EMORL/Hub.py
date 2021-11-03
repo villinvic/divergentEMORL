@@ -8,7 +8,7 @@ import fire
 import os
 
 from EMORL.Population import Population
-from EMORL.misc import policy_similarity
+from EMORL.misc import policy_similarity, MovingAverage
 from EMORL.MOO import ND_sort
 from EMORL.plotting import plot_perf_uniq, plot_stats
 from Game.core import Game
@@ -56,8 +56,7 @@ class Hub(Default, Logger):
                                               self.TRAJECTORY_LENGTH-1, dummy_env.action_dim), dtype=np.float32)
         self.perf_and_uniqueness = np.zeros((2, self.pop_size+self.n_offspring, 1), dtype=np.float32)
 
-        self.eval_queue = np.full((30,), fill_value=np.nan, dtype=np.float32)
-        self.eval_index = 0
+        self.eval_queue = MovingAverage(self.moving_avg_size)
 
         self.rewards = Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.max_see, dummy_env.view_range)
 
@@ -220,10 +219,6 @@ class Hub(Default, Logger):
         # for each individual, select k random (or nearest ?)  individual behavior stats as a landmark for divergence
         return self.population[np.random.choice(np.delete(np.arange(self.pop_size), excluded, 0), self.k_random)]
 
-    def reset_eval_queue(self):
-        self.eval_queue[:] = np.nan
-        self.eval_index = 0
-
     def train_offspring(self):
         # Train each individuals for x minutes, 1 by 1, on the trainer (can be the Hub, with GPU)
         # empty queue
@@ -231,7 +226,6 @@ class Hub(Default, Logger):
             self.logger.info('Training offspring n°%d...' % index)
             self.pub_params(index)
             last_pub_time = time()
-            self.reset_eval_queue()
             start_time = time()
             for _ in range(6):
                 self.recv_training_data()
@@ -240,9 +234,11 @@ class Hub(Default, Logger):
                 self.recv_training_data()
                 perf = self.train(index)
                 if perf is not None:
-                    self.eval_queue[self.eval_index % len(self.eval_queue)] = perf
-                    self.eval_index += 1
-                if self.offspring_pool[index].mean_entropy < self.max_entropy * self.critical_entropy_ratio:
+                    self.eval_queue.push(perf)
+                # if not improving or too low entropy, drop training
+                if self.eval_queue.trend_count < -self.trend_maxcount or self.offspring_pool[index].mean_entropy \
+                        < self.max_entropy * self.critical_entropy_ratio:
+                    self.logger.info('Dropped training !')
                     break
                 current = time()
                 if current - last_pub_time > 5:
@@ -250,7 +246,9 @@ class Hub(Default, Logger):
                     last_pub_time = current
 
             # use recent training eval for selection
-            self.offspring_pool[index].performance = np.nanmean(self.eval_queue)
+            self.offspring_pool[index].performance = self.eval_queue()
+
+            self.eval_queue.reset()
 
     def compute_uniqueness(self):
         index = 0

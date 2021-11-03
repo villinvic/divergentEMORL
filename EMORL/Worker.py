@@ -37,7 +37,7 @@ class Worker(Default):
             'probs': np.zeros((self.TRAJECTORY_LENGTH, self.game.action_dim), dtype=np.float32),
             'win': np.zeros((self.TRAJECTORY_LENGTH,), dtype=np.float32),
             #'reward': np.zeros((self.TRAJECTORY_LENGTH, self.game.n_rewards), dtype=np.float32),
-            'hidden_states': np.zeros((2, 256), dtype=np.float32),
+            'hidden_states': np.zeros((2, 128), dtype=np.float32),
         }
 
         self.trajectory['hidden_states'][:] = np.concatenate([hidden_h,hidden_c], axis=0)

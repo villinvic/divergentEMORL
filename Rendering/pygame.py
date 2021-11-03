@@ -63,7 +63,7 @@ class PyGameEngine:
         self.display.blit(self.bg, (0,0))
         self.player.update(400+x*2, 400+y*2)
         self.player.draw(self.display)
-        pygame.draw.circle(self.display, BLACK, (400+x*2,400+y*2), 120, width=1)
+        pygame.draw.circle(self.display, BLACK, (400+x*2,400+y*2), 200, width=1)
         for event in pygame.event.get():
             if event.type == QUIT:
                 pygame.quit()

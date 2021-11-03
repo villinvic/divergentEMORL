@@ -1,1 +1,3 @@
-improve crossover
+TODO
+     improve crossover
+     long RL, smaller pop, more precise reward params, drop training if no improvement
