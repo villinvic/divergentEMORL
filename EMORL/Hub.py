@@ -236,7 +236,7 @@ class Hub(Default, Logger):
                 if perf is not None:
                     self.eval_queue.push(perf)
                 # if not improving or too low entropy, drop training
-                if self.eval_queue.trend_count < -self.trend_maxcount or self.offspring_pool[index].mean_entropy \
+                if self.eval_queue.trend_count < -self.bad_trend_maxcount or self.offspring_pool[index].mean_entropy \
                         < self.max_entropy * self.critical_entropy_ratio:
                     self.logger.info('Dropped training !')
                     break
