@@ -2,6 +2,9 @@ import numpy as np
 from EMORL.misc import uniform_with_hole, log_uniform
 from Rendering.pygame import PyGameEngine
 from config.Loader import Default
+from pprint import pprint
+
+np.set_printoptions(suppress=True)
 
 
 
@@ -86,7 +89,8 @@ class Game(Default):
                 self.state[self.indexes[index]] = np.clip(self.state[self.indexes[index]] + angle[direction] * 0.25, -self.max_inertia, self.max_inertia)
 
 
-        self.state[(self.n_exits+self.n_cyclones)*6+4: -1] = self.state[(self.n_exits+self.n_cyclones)*6: -5]
+        self.state[self.max_see*6+4: -1] = self.state[self.max_see*6: -5]
+
         self.state[self.indexes['player_x']] += self.state[self.indexes['inertia_x']] * 1.25
         self.state[self.indexes['player_y']] += self.state[self.indexes['inertia_y']] * 1.25
 
@@ -128,6 +132,8 @@ class Game(Default):
         self.state[self.indexes['inertia_x']] *= self.friction
         self.state[self.indexes['inertia_y']] *= self.friction
         self.state[-1] += 1
+
+        #pprint(self.state)
 
         return False, 0
 

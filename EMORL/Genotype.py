@@ -169,7 +169,7 @@ class EvolvingVariable(Default):
             if np.random.random() < self.reset_chance:
                 self._current_value = misc.log_uniform(*self.domain)
             else:
-                perturbation = np.random.uniform(1.-self.perturb_power, 1.+self.perturb_power)
+                perturbation = np.random.choice([1.-self.perturb_power, 1.+self.perturb_power])
                 self._current_value = np.clip(perturbation * self._current_value, *self.domain) # clip ??
             self.history.append(self._current_value)
 

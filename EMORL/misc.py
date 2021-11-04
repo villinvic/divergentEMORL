@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+import scipy.signal as scpsig
 
 
 def log_uniform(low=0, high=1, size=None, base=10):
@@ -24,11 +25,8 @@ def policy_similarity(a, b, l=1):
 
 def nn_crossover(a, b, architecture={}):
     pairs = [pairwise_cross_corr(ax, bx) for ax,bx in zip(a,b)]
-    for x in pairs:
-        print(np.max(x))
     W_permuted = [np.zeros((2,)+ax.shape, dtype=np.float32) for ax in a]
     for layer_index, previous_index in architecture.items():
-        print(layer_index, previous_index)
         if previous_index is not None:
             W_permuted[layer_index][:, :-1, :] = a[layer_index][pairs[previous_index][0], :], b[layer_index][pairs[previous_index][1], :]
 
@@ -51,17 +49,19 @@ def layer_crossover(a, b, pairs, layer_index, previous_index, permuted):
 
 def pairwise_cross_corr(La, Lb):
     n = La.shape[1]
-    m = np.empty((n, n), dtype=np.float32)
     scaler = StandardScaler()
     n_La = scaler.fit_transform(La)
     n_Lb = scaler.fit_transform(Lb)
 
-    for i in range(len(m)):
-        for j in range(len(m)):
-            m[i, j] = np.corrcoef(n_La[:, i], n_Lb[:, j])[0,1]
+
+    def corrcoef(i,j):
+        return np.corrcoef(n_La[:, i], n_Lb[:, j])[0,1]
+    m = np.fromfunction(np.vectorize(corrcoef), (n,n), dtype=np.int32)
 
     m[np.isnan(m)] = -1
     argmax_columns = np.flip(np.argsort(m, axis=0), axis=0)
+    print(np.max(argmax_columns))
+    print(argmax_columns.shape)
     dead_neurons = np.sum(m, axis=0) == - n
 
     pairs = np.full((2, n), fill_value=np.nan, dtype=np.int32)
@@ -156,6 +156,10 @@ if __name__ == '__main__':
 
     s = np.random.random((256, 80, 100))
     a = Individual(0, 100, 32, [], trainable=True)
+    a_w = a.genotype['brain'].get_training_params()
+    a_w['actor_core'][0][0][::15] += np.random.random(a_w['actor_core'][0][0][::15].shape)*0.1
+    a_w['actor_core'][0][1][::3] -= np.random.random(a_w['actor_core'][0][1][::3].shape) *0.3
+    a.genotype['brain'].set_training_params(a_w)
     b = Individual(0, 100, 32, [], trainable=True)
     c = Individual(0, 100, 32, [], trainable=True)
 
