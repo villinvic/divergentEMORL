@@ -49,7 +49,6 @@ class Rewards:
             (states[:, :-1, self.args_to_check+1]-states[:, :-1, [self.max_see*6+1]])**2))*
             states[:, :-1, self.args_to_check+4]*np.float32(np.equal(states[:, :-1, self.args_to_check+4],states[:, 1:, self.args_to_check+4])), axis=-1)
 
-        print(self['toward_away'])
         self['win'][:, :] = base_rewards
 
         self['exploration'] = (-np.sqrt((states[:, 1:, 6 * self.max_see])**2+(states[:, 1:, 6 * self.max_see+1])**2)\
