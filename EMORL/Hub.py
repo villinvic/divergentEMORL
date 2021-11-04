@@ -101,7 +101,8 @@ class Hub(Default, Logger):
                 received += 1
         except zmq.ZMQError:
             pass
-        print(len(self.exp))
+        if len(self.exp)> self.BATCH_SIZE * 3:
+            self.logger.info('exp waiting: %d ' % len(self.exp))
         self.rcved += received
 
     def pub_params(self, index):
