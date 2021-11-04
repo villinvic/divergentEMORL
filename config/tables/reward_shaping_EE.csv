@@ -1,6 +1,6 @@
 name, lower_bound, higher_bound
-"velocity", 0.001, 0.1
-"toward_away", 0.0001, 0.01
+"velocity", 0.001, 1.0
+"toward_away", 0.001, 1.0
 "exploration", 0.0001, 0.01
 "time", 0.0001, 0.01
 "win", 0.5, 5.

@@ -27,8 +27,6 @@ class Rewards:
         self.area_size = area_size
         self.view_range = view_range
 
-        self.dist_toward = np.zeros((batch_size, trajectory_length-1), dtype=np.float32)
-        self.dist_away = np.zeros((batch_size, trajectory_length - 1), dtype=np.float32)
         self.args_to_check = np.array([i*6 for i in range(self.max_see)], dtype=np.int32)
     def __setitem__(self, key, value):
         self.scores[key] = value
@@ -44,21 +42,14 @@ class Rewards:
         self['velocity'] = np.sqrt(states[:, 1:, 6 * self.max_see + 2]**2 + states[:, 1:, 6 * self.max_see + 3]**2) - 0.2
 
 
-        self.dist_toward[:, :] = 0
-        self.dist_away[:, :] = 0
-
-        print('hello')
-        has_target = np.where(np.logical_and(states[:, 1:, 4] == 1, states[:, :-1, 4] == 1))
-        has_obstacle = np.where(np.logical_and(states[:, 1:, 4] == -1, states[:, :-1, 4] == -1))
-        self['toward_away'][:] = 0.
-
         self['toward_away'][:] = np.sum(
-            (np.sqrt((states[:, 1:, self.args_to_check]-states[:, 1:, self.args_to_check])**2+
-            (states[:, 1:, self.args_to_check+1]-states[:, 1:, self.args_to_check+1])**2)-
-            np.sqrt((states[:, :-1, self.args_to_check]-states[:, :-1, self.args_to_check])**2+
-            (states[:, :-1, self.args_to_check+1]-states[:, :-1, self.args_to_check+1])**2))*
-            states[:, :-1, self.args_to_check+4], axis=-1)
+            (np.sqrt((states[:, 1:, self.args_to_check]-states[:, 1:, [self.max_see*6]])**2+
+            (states[:, 1:, self.args_to_check+1]-states[:, 1:, [self.max_see*6+1]])**2)-
+            np.sqrt((states[:, :-1, self.args_to_check]-states[:, :-1, [self.max_see*6]])**2+
+            (states[:, :-1, self.args_to_check+1]-states[:, :-1, [self.max_see*6+1]])**2))*
+            states[:, :-1, self.args_to_check+4]*np.float32(np.equal(states[:, :-1, self.args_to_check+4],states[:, 1:, self.args_to_check+4])), axis=-1)
 
+        print(self['toward_away'])
         self['win'][:, :] = base_rewards
 
         self['exploration'] = (-np.sqrt((states[:, 1:, 6 * self.max_see])**2+(states[:, 1:, 6 * self.max_see+1])**2)\
