@@ -108,7 +108,7 @@ def safe_crossover(ax, bx):
 class MovingAverage:
     def __init__(self, length, last_k=None):
         if last_k is None:
-            self.last_k = int(length * 0.2)
+            self.last_k = int(length * 0.33)
         else:
             self.last_k = last_k
 
@@ -119,7 +119,7 @@ class MovingAverage:
         self.moving_avg = np.full((length,), np.nan, dtype=np.float32)
 
     def __call__(self):
-        return np.nanmean(self.values.take( np.arange((self.index%self.length)-self.last_k, self.index%self.length), mode='wrap'))
+        return self.moving_avg[(self.index-1)%self.length]
 
     def push(self, x):
         self.values[self.index % self.length] = x
