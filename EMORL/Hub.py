@@ -101,6 +101,7 @@ class Hub(Default, Logger):
                 received += 1
         except zmq.ZMQError:
             pass
+        print(len(self.exp))
         self.rcved += received
 
     def pub_params(self, index):
