@@ -265,13 +265,12 @@ class Hub(Default, Logger):
                 index += 1
 
         for individual_index in range(self.pop_size+self.n_offspring):
-            distance = 0
+            distance = 1.
             if individual_index not in failed_indexes:
                 for individual2_index in range(self.pop_size+self.n_offspring):
                     if individual_index != individual2_index and individual2_index not in failed_indexes:
-                        distance += 1. - policy_similarity(self.behavior_embeddings[individual_index],
-                                                   self.behavior_embeddings[individual2_index], self.similarity_l)
-                distance /= (self.pop_size+self.n_offspring-1)
+                        distance = min(distance, 1. - policy_similarity(self.behavior_embeddings[individual_index],
+                                                   self.behavior_embeddings[individual2_index], self.similarity_l))
             self.perf_and_uniqueness[1, individual_index, 0] = distance
 
     def select(self):
