@@ -276,6 +276,7 @@ class Hub(Default, Logger):
                                                            self.behavior_embeddings[individual2_index],
                                                            self.similarity_l)
             distance /= (self.pop_size + self.n_offspring - 1)
+            self.perf_and_uniqueness[1, individual_index] = distance
 
     def select(self):
         index = 0

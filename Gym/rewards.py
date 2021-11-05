@@ -105,8 +105,8 @@ class BoxingRewards:
 
     def compute(self, states, reward_shape, base_rewards):
 
-        self['distance_toward'][:] = np.clip(np.sqrt((states[:, 1:, 0]-states[:, 1:, 2])**2+(states[:, 1:, 1]-states[:, 1:, 2])**2) - \
-                           np.sqrt((states[:, :-1, 0]-states[:, :-1, 2])**2+(states[:, :-1, 1]-states[:, :-1, 2])**2), -1.5, 1.5)
+        self['distance_toward'][:] = np.clip(np.sqrt((states[:, :-1, 0]-states[:, :-1, 2])**2+(states[:, :-1, 1]-states[:, :-1, 2])**2) - \
+                           np.sqrt((states[:, 1:, 0]-states[:, 1:, 2])**2+(states[:, 1:, 1]-states[:, 1:, 2])**2), -1.5, 1.5)
         self['distance_away'][:] = -self['distance_toward']
 
         self['hit'][:] = np.clip( states[:, 1:, 4]- states[:, :-1, 4], 0., np.inf)
@@ -116,7 +116,9 @@ class BoxingRewards:
 
         self.values[:, :] = np.sum([self[event]*reward_shape[event]/state_scale for event, state_scale in self.base.items()], axis=0)
 
-        performance = np.sum(np.mean(base_rewards/self.base[self.main], axis=0))
+        all_wins = np.sum(np.clip(base_rewards, 0., 1.))
+        all_points = np.sum(np.abs(base_rewards)) + 1e-8
+        performance = all_wins/all_points * 100
 
         return self.values, performance
 
