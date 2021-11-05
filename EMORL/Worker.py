@@ -8,16 +8,17 @@ import time
 import signal
 
 from config.Loader import Default
-from Game.core import Game
-#from Gym.Mujoco import MujocoEnv
+#from Game.core import Game
+from Gym.Boxing import Boxing as Game
 from EMORL.Individual import Individual
+
 
 
 class Worker(Default):
     def __init__(self, render=False, hub_ip='127.0.0.1'):
         self.render = render
         super(Worker, self).__init__()
-        self.game =  Game(render)
+        self.game =  Game(render=render, frameskip=self.frameskip)
         self.player = Individual(-1, self.game.state_dim, self.game.action_dim, [])
         #self.player = Individual(-1, self.game.env.observation_space.shape[0], self.game.env.action_space.shape[0], [])
 
@@ -62,9 +63,9 @@ class Worker(Default):
         for index in range(self.TRAJECTORY_LENGTH):
             if self.render:
                 self.game.render()
-            s = self.game.state / self.game.scales
+            #s = self.game.state / self.game.scales
             action_id, distribution, hidden_h, hidden_c = self.player.policy(self.game.state)
-            self.trajectory['state'][index, :] = s
+            self.trajectory['state'][index, :] = self.game.state
             self.trajectory['action'][index] = action_id
             self.trajectory['probs'][index] = distribution
             done, win = self.game.step(action_id)

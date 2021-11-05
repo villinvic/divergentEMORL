@@ -1,8 +1,0 @@
-name, lower_bound, higher_bound
-"movement", 0.001, 1.0
-"opp_movement", 0.0001, 0.1
-"back", 0.001, 1.0
-"front", 0.001, 1.0
-"score", 0.0003, 1.0
-"aim", 0.0003, 1.0
-"win", 1.0, 10.0

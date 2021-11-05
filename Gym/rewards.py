@@ -66,6 +66,61 @@ class TennisRewards:
         return self.values, performance
 
 
+
+class BoxingRewards:
+    base = {
+        'distance_away': 0.05,
+        'distance_toward': 0.05,
+        'hit': 0.05,
+        'hurt': 0.05,
+        'win': 1.,
+        'time': 1.,
+    }
+
+    main = 'win'
+
+
+    def __init__(self, batch_size, trajectory_length):
+
+        self.scores = {
+            name : np.zeros((batch_size, trajectory_length-1), dtype=np.float32) for name, scale in self.base.items()
+        }
+
+        self.values = np.zeros((batch_size, trajectory_length-1), dtype=np.float32)
+
+
+        self['time'][:] =  -1.
+
+    def __setitem__(self, key, value):
+        self.scores[key] = value
+
+    def __getitem__(self, item):
+        return self.scores[item]
+
+    def compute_damage(self, obs):
+        injury = obs[5 + self.state_dim] - obs[5]
+        damage = obs[4 + self.state_dim] - obs[4]
+
+        return np.clip(damage / self.scales[4], 0, 2), np.clip(injury / self.scales[5], 0, 2)
+
+    def compute(self, states, reward_shape, base_rewards):
+
+        self['distance_toward'][:] = np.clip(np.sqrt((states[:, 1:, 0]-states[:, 1:, 2])**2+(states[:, 1:, 1]-states[:, 1:, 2])**2) - \
+                           np.sqrt((states[:, :-1, 0]-states[:, :-1, 2])**2+(states[:, :-1, 1]-states[:, :-1, 2])**2), -1.5, 1.5)
+        self['distance_away'][:] = -self['distance_toward']
+
+        self['hit'][:] = np.clip( states[:, 1:, 4]- states[:, :-1, 4], 0., np.inf)
+        self['hurt'][:] = -np.clip(states[:, 1:, 5] - states[:, :-1, 5], 0, np.inf)
+
+        self['win'][:] = base_rewards
+
+        self.values[:, :] = np.sum([self[event]*reward_shape[event]/state_scale for event, state_scale in self.base.items()], axis=0)
+
+        performance = np.sum(np.mean(base_rewards/self.base[self.main], axis=0))
+
+        return self.values, performance
+
+
 class MujocoRewards:
     indexes = {
         'reward_forward': 0,
@@ -121,6 +176,9 @@ class MujocoRewards:
         self.values[:, :] = np.sum([self[event]*reward_shape[event]/state_scale for event, state_scale in self.base.items()], axis=0)
 
         return self.values
+
+
+
 
 
 

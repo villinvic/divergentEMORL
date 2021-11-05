@@ -11,11 +11,10 @@ from EMORL.Population import Population
 from EMORL.misc import policy_similarity, MovingAverage
 from EMORL.MOO import ND_sort
 from EMORL.plotting import plot_perf_uniq, plot_stats
-from Game.core import Game
-#from Gym.Mujoco import MujocoEnv
-from Game.rewards import Rewards
-#from Gym.rewards import MujocoRewards
-#from Gym.rewards import MujocoRewards
+#from Game.core import Game
+#from Game.rewards import Rewards
+from Gym.Boxing import Boxing
+from Gym.rewards import BoxingRewards
 from config.Loader import Default
 from logger.Logger import Logger
 
@@ -32,7 +31,8 @@ class Hub(Default, Logger):
             tf.config.experimental.set_memory_growth(gpu, True)
         tf.summary.experimental.set_step(0)
 
-        dummy_env = Game()
+        #dummy_env = Game()
+        dummy_env = Boxing()
         self.max_entropy = np.log(dummy_env.action_dim)
 
         self.running_instance_id = datetime.datetime.now().strftime("EMORL_%Y-%m-%d_%H-%M")
@@ -58,7 +58,8 @@ class Hub(Default, Logger):
 
         self.eval_queue = MovingAverage(self.moving_avg_size)
 
-        self.rewards = Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.max_see, dummy_env.view_range)
+        self.rewards = BoxingRewards(self.BATCH_SIZE, self.TRAJECTORY_LENGTH)
+            #Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.max_see, dummy_env.view_range)
 
         c = zmq.Context()
         self.blob_socket = c.socket(zmq.PUB)
@@ -89,7 +90,7 @@ class Hub(Default, Logger):
                     done, _ = dummy_env.step(np.random.choice(dummy_env.action_dim))
                     if done:
                         dummy_env.reset()
-                self.sampled_trajectories[i, j, :] = dummy_env.state / dummy_env.scales
+                self.sampled_trajectories[i, j, :] = dummy_env.state#/ dummy_env.scales
 
         self.sampled_trajectories_tmp[:, :, :] = self.sampled_trajectories
 

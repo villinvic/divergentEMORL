@@ -43,11 +43,11 @@ class Rewards:
 
 
         self['toward_away'][:] = np.sum(
-            (np.sqrt((states[:, 1:, self.args_to_check]-states[:, 1:, [self.max_see*6]])**2+
-            (states[:, 1:, self.args_to_check+1]-states[:, 1:, [self.max_see*6+1]])**2)-
-            np.sqrt((states[:, :-1, self.args_to_check]-states[:, :-1, [self.max_see*6]])**2+
-            (states[:, :-1, self.args_to_check+1]-states[:, :-1, [self.max_see*6+1]])**2))*
-            states[:, :-1, self.args_to_check+4]*np.float32(np.equal(states[:, :-1, self.args_to_check+4],states[:, 1:, self.args_to_check+4])), axis=-1)
+            (np.sqrt((states[:, :-1, self.args_to_check]-states[:, :-1, [self.max_see*6]])**2+
+            (states[:, :-1, self.args_to_check+1]-states[:, :-1, [self.max_see*6+1]])**2)-
+            np.sqrt((states[:, 1:, self.args_to_check]-states[:, 1:, [self.max_see*6]])**2+
+            (states[:, 1:, self.args_to_check+1]-states[:, 1:, [self.max_see*6+1]])**2))*
+            states[:, 1:, self.args_to_check+4]*np.float32(np.equal(states[:, :-1, self.args_to_check+4],states[:, 1:, self.args_to_check+4])), axis=-1)
 
         self['win'][:, :] = base_rewards
 

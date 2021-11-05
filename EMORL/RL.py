@@ -419,7 +419,7 @@ class AC(tf.keras.Model, Default):
 
                 behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
                 new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
-                _, log_div = tf.linalg.slogdet(new_K)
+                _, log_div = tf.linalg.slogdet(new_K + tf.eye(size) * 10e-4)
 
                 total_loss = 0.5 * v_loss + p_loss - lamb * log_div
 
