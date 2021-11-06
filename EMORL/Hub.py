@@ -270,7 +270,8 @@ class Hub(Default, Logger):
                     failed_indexes.append(index)
                 else:
                     self.behavior_embeddings[index, :, :, :] = individual.probabilities_for(
-                        self.sampled_trajectories.reshape((self.behavior_embedding_size*self.BATCH_SIZE,)+self.sampled_trajectories.shape[2:])[:, :-1])
+                        self.sampled_trajectories.reshape((self.behavior_embedding_size*self.BATCH_SIZE,)+self.sampled_trajectories.shape[2:])[:, :-1])\
+                    .numpy().reshape(self.behavior_embeddings.shape[1:])
                 index += 1
 
         for individual_index in range(self.pop_size+self.n_offspring):
