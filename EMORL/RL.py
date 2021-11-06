@@ -164,7 +164,6 @@ class Policy(tf.keras.Model, Default):
 
         self.prob = Dense(action_dim, dtype='float32', name="prob", activation="softmax")
 
-    @tf.function
     def init_body(self, features):
 
         if self.has_lstm:
@@ -500,8 +499,8 @@ class AC(tf.keras.Model, Default):
 
     @staticmethod
     def compute_similarity(dist_1, dist_2, l):
-        return tf.exp(-tf.square(tf.reduce_sum(
-            dist_1 * (tf.math.log(dist_1 + 1e-8) - tf.math.log(dist_2 + 1e-8))))/(2.*l**2))
+        return tf.exp(-tf.square(tf.reduce_mean(tf.reduce_sum(
+            dist_1 * (tf.math.log(dist_1 + 1e-8) - tf.math.log(dist_2 + 1e-8)), axis=-1)))/(2.*l**2))
 
     def get_params(self):
         actor_weights = [dense.get_weights() for dense in [self.dense_1] + self.policy.denses]
@@ -543,7 +542,6 @@ class AC(tf.keras.Model, Default):
             x = self.policy.get_probs(x)
         return x
 
-    @tf.function
     def init_body(self, states):
         if self.has_lstm:
             lstm = self.lstm(states)

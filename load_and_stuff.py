@@ -6,7 +6,7 @@ import fire
 def load_and_stuff(path, pop_size):
     dummy = Game()
     pop = Population(pop_size, dummy.state_dim, dummy.action_dim)
-    pop.initialize(trainable=True, batch_dim=(256,80))
+    pop.initialize(trainable=True, batch_dim=(128,80))
 
     pop.load(path)
     plot_stats(pop, '')

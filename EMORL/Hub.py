@@ -49,10 +49,10 @@ class Hub(Default, Logger):
         self.offspring_pool.initialize(trainable=True, batch_dim=(self.BATCH_SIZE, self.TRAJECTORY_LENGTH))
 
         # tajectories used to compute behavior distance
-        self.sampled_trajectories = np.zeros((self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.state_dim), dtype=np.float32)
+        self.sampled_trajectories = np.zeros((self.behavior_embedding_size, self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.state_dim), dtype=np.float32)
         self.sampled_trajectories_tmp = np.zeros_like(self.sampled_trajectories)
         self.traj_index = 0
-        self.behavior_embeddings = np.zeros((self.pop_size+self.n_offspring, self.BATCH_SIZE,
+        self.behavior_embeddings = np.zeros((self.pop_size+self.n_offspring, self.behavior_embedding_size, self.BATCH_SIZE,
                                               self.TRAJECTORY_LENGTH-1, dummy_env.action_dim), dtype=np.float32)
         self.perf_and_uniqueness = np.zeros((2, self.pop_size+self.n_offspring, 1), dtype=np.float32)
 
@@ -85,14 +85,14 @@ class Hub(Default, Logger):
         for i in range(self.BATCH_SIZE):
             for j in range(self.TRAJECTORY_LENGTH):
 
-                n_steps = np.random.randint(1,5)
+                n_steps = 1
                 for _ in range(n_steps):
                     done, _ = dummy_env.step(np.random.choice(dummy_env.action_dim))
                     if done:
                         dummy_env.reset()
-                self.sampled_trajectories[i, j, :] = dummy_env.state#/ dummy_env.scales
+                self.sampled_trajectories[:, i, j, :] = dummy_env.state#/ dummy_env.scales
 
-        self.sampled_trajectories_tmp[:, :, :] = self.sampled_trajectories
+        self.sampled_trajectories_tmp[:] = self.sampled_trajectories
 
     def recv_training_data(self):
         received = 0
@@ -116,7 +116,9 @@ class Hub(Default, Logger):
 
     def compute_diversity(self):
         for index, individual in enumerate(self.population):
-                self.behavior_embeddings[index, :, :, :] = individual.probabilities_for(self.sampled_trajectories[:, :-1])
+                self.behavior_embeddings[index, :, :, :, :] = individual.probabilities_for\
+                    (self.sampled_trajectories.reshape((self.behavior_embedding_size*self.BATCH_SIZE,)+self.sampled_trajectories.shape[2:])[:, :-1])\
+                    .numpy().reshape(self.behavior_embeddings.shape[1:])
 
         for i in range(self.pop_size):
             for j in range(self.pop_size):
@@ -149,10 +151,11 @@ class Hub(Default, Logger):
 
             # Train
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
+                random_embedding = np.random.randint(0, self.behavior_embedding_size)
 
                 self.offspring_pool[index].mean_entropy = \
-                    self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectories,
-                                                                       self.behavior_embeddings[:self.pop_size],
+                    self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectories[random_embedding],
+                                                                       self.behavior_embeddings[random_embedding, :self.pop_size],
                                                                        self.policy_kernel, self.similarity_l,
                                                                        self.pop_size,
                                                                        self.offspring_pool[index].genotype['learning'],
@@ -170,10 +173,8 @@ class Hub(Default, Logger):
         return None
 
     def sample_states(self, batch):
-        if  self.traj_index < self.BATCH_SIZE or np.random.random() < self.save_traj_batch_chance:
-            self.sampled_trajectories_tmp[(self.traj_index//self.TRAJECTORY_LENGTH)%self.BATCH_SIZE, self.traj_index%self.TRAJECTORY_LENGTH, :] = \
-                batch[np.random.choice(self.BATCH_SIZE), np.random.choice(self.TRAJECTORY_LENGTH)]
-            self.traj_index += 1
+        if self.traj_index < self.BATCH_SIZE or np.random.random() < self.save_traj_batch_chance:
+            self.sampled_trajectories_tmp[np.random.randint(0, self.behavior_embedding_size), :, :, :] = batch
 
     def __call__(self):
         try:
@@ -185,7 +186,7 @@ class Hub(Default, Logger):
                 self.make_offspring()
                 self.logger.info('Training offspring...')
                 self.train_offspring()
-                self.sampled_trajectories[:,:,:] = self.sampled_trajectories_tmp
+                self.sampled_trajectories[:] = self.sampled_trajectories_tmp
                 self.logger.info('Computing uniqueness...')
                 self.compute_uniqueness()
                 self.logger.info('Selecting...')
@@ -264,7 +265,8 @@ class Hub(Default, Logger):
                     self.behavior_embeddings[index, :, :, :] = 0.
                     failed_indexes.append(index)
                 else:
-                    self.behavior_embeddings[index, :, :, :] = individual.probabilities_for(self.sampled_trajectories[:, :-1])
+                    self.behavior_embeddings[index, :, :, :] = individual.probabilities_for(
+                        self.sampled_trajectories.reshape((self.behavior_embedding_size*self.BATCH_SIZE,)+self.sampled_trajectories.shape[2:])[:, :-1])
                 index += 1
 
         for individual_index in range(self.pop_size+self.n_offspring):

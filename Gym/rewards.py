@@ -118,7 +118,7 @@ class BoxingRewards:
 
         all_wins = np.sum(np.clip(base_rewards, 0., 1.))
         all_points = np.sum(np.abs(base_rewards)) + 1e-8
-        performance = all_wins/all_points * 100
+        performance = all_wins/all_points * 100  - 50
 
         return self.values, performance
 

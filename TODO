@@ -1,3 +1,3 @@
 TODO
-     improve crossover
-     long RL, smaller pop, more precise reward params, drop training if no improvement
+     improve crossover speed
+     many behavior embeddings for each iterations

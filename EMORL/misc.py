@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn.preprocessing import StandardScaler
-import scipy.signal as scpsig
-
+import tensorflow as tf
 
 def log_uniform(low=0, high=1, size=None, base=10):
     assert low < high
@@ -17,7 +16,7 @@ def uniform_with_hole(low=70, high=200):
     return np.array([x,y], dtype=np.float32)
 
 def kl_divergence(a, b):
-    return np.sum(a * (np.log(a+1e-8) - np.log(b+1e-8)))
+    return np.mean(np.sum(a * (np.log(a+1e-8) - np.log(b+1e-8)), axis=-1))
 
 def policy_similarity(a, b, l=1):
     return np.exp(-kl_divergence(a, b)**2/(2 * l ** 2))
@@ -47,21 +46,28 @@ def layer_crossover(a, b, pairs, layer_index, previous_index, permuted):
         permuted[:] = permuted[0][:, pairs[0]], permuted[1][:, pairs[1]]
 
 
+def corr_matrix(X,Y):
+    xvar = tf.reduce_sum(tf.math.squared_difference(X, tf.reduce_mean(X, axis=0)), axis=0)
+    yvar = tf.reduce_sum(tf.math.squared_difference(Y, tf.reduce_mean(Y, axis=0)), axis=0)
+    dot = tf.tensordot(tf.transpose(X), Y, axes=1)
+
+    M = dot / tf.sqrt(xvar * yvar)
+
+    return M
+
+
 def pairwise_cross_corr(La, Lb):
     n = La.shape[1]
     scaler = StandardScaler()
     n_La = scaler.fit_transform(La)
     n_Lb = scaler.fit_transform(Lb)
 
-
-    def corrcoef(i,j):
-        return np.corrcoef(n_La[:, i], n_Lb[:, j])[0,1]
-    m = np.fromfunction(np.vectorize(corrcoef), (n,n), dtype=np.int32)
+    m = corr_matrix(n_La, n_Lb).numpy()
 
     m[np.isnan(m)] = -1
     argmax_columns = np.flip(np.argsort(m, axis=0), axis=0)
-    print(np.max(argmax_columns))
-    print(argmax_columns.shape)
+    #print(np.max(argmax_columns))
+    #print(argmax_columns.shape)
     dead_neurons = np.sum(m, axis=0) == - n
 
     pairs = np.full((2, n), fill_value=np.nan, dtype=np.int32)
@@ -81,7 +87,7 @@ def pairwise_cross_corr(La, Lb):
             pairs[0, index_add] = index
             index_add += 1
 
-    print(pairs)
+    #print(pairs)
     return pairs
 
 
