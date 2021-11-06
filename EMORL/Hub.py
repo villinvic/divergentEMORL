@@ -81,7 +81,7 @@ class Hub(Default, Logger):
 
         self.init_sampled_trajectories(dummy_env)
 
-        self.save_traj_batch_chance = 0.33 / (self.behavior_embedding_size*self.BATCH_SIZE*self.n_offspring)
+        self.save_traj_batch_chance = 1 / 300
 
 
     def init_sampled_trajectories(self, dummy_env):
