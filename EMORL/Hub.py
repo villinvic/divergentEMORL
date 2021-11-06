@@ -81,6 +81,9 @@ class Hub(Default, Logger):
 
         self.init_sampled_trajectories(dummy_env)
 
+        self.save_traj_batch_chance = 0.33 / (self.behavior_embedding_size*self.BATCH_SIZE*self.n_offspring)
+
+
     def init_sampled_trajectories(self, dummy_env):
         for i in range(self.BATCH_SIZE):
             for j in range(self.TRAJECTORY_LENGTH):
@@ -174,7 +177,10 @@ class Hub(Default, Logger):
 
     def sample_states(self, batch):
         if self.traj_index < self.BATCH_SIZE or np.random.random() < self.save_traj_batch_chance:
-            self.sampled_trajectories_tmp[np.random.randint(0, self.behavior_embedding_size), :, :, :] = batch
+            self.sampled_trajectories_tmp[self.traj_index // self.behavior_embedding_size,
+            self.traj_index % self.BATCH_SIZE, :, :] = batch
+
+            self.traj_index += 1
 
     def __call__(self):
         try:
