@@ -155,7 +155,7 @@ class Hub(Default, Logger):
 
                 self.offspring_pool[index].mean_entropy = \
                     self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectories[random_embedding],
-                                                                       self.behavior_embeddings[random_embedding, :self.pop_size],
+                                                                       self.behavior_embeddings[:, random_embedding, :self.pop_size],
                                                                        self.policy_kernel, self.similarity_l,
                                                                        self.pop_size,
                                                                        self.offspring_pool[index].genotype['learning'],
