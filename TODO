@@ -8,6 +8,16 @@ OBS
         => really diverse and bad player can always be selected
         ? maybe select individuals that are at least better than the worst current individual.
 
+    How to evaluate novelty each generation for selection ?
+    => current approach : compute average behavior difference over pop and offspring
+        => problem : at iteration i, individual A has a high novelty score.
+                     next iteration i+1, individual B and C get generated (with A as the only parent).
+                     despite the help of DvD, A, B and C has similar behaviors (but still relatively novel to the existing other behaviors in the population)
+                     => average novelty score for A, B and C gets lower
+                        => A, B and C do not get selected...
+        => solution : compute two novelty scores : one averaged over current pop, and one over the offspring, then sum. ???
+        => solution 2 : append an individual once at the time !
+
    We can experiment on Multi-agent !
    => alter the framework to train multiple offsprings in parallel (use elo ? no)
    => experiment on Nojima's idea

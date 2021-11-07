@@ -274,7 +274,7 @@ class Hub(Default, Logger):
                     .numpy().reshape(self.behavior_embeddings.shape[1:])
                 index += 1
 
-        for individual_index in range(self.pop_size+self.n_offspring):
+        """for individual_index in range(self.pop_size+self.n_offspring):
             distance = 0.
             if individual_index not in failed_indexes:
                 for individual2_index in range(self.pop_size+self.n_offspring):
@@ -283,7 +283,7 @@ class Hub(Default, Logger):
                                                            self.behavior_embeddings[individual2_index],
                                                            self.similarity_l)
             distance /= (self.pop_size + self.n_offspring - 1)
-            self.perf_and_uniqueness[1, individual_index] = distance
+            self.perf_and_uniqueness[1, individual_index] = distance"""
 
     def select(self):
         index = 0
@@ -326,6 +326,12 @@ class Hub(Default, Logger):
                 self.population[new_index].inerit_from(self.population[individual_index])
             else:
                 self.population[new_index].inerit_from(self.offspring_pool[individual_index-self.pop_size])
+
+    def iterative_select(self):
+        index = 0
+        pool = [0]
+        for index in range(1, self.pop_size+self.n_offspring):
+
 
 
     def load(self, ckpt_path):
