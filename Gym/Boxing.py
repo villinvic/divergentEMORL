@@ -70,7 +70,6 @@ class Boxing:
         frames = obs[self.frames]
         time = minutes + (seconds + frames/60.) / 60.
         obs[0] = time
-        print(time)
         return (obs[self.indexes] - self.centers) * self.scales
 
     def win(self, done, obs):

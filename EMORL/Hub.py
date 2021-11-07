@@ -194,7 +194,7 @@ class Hub(Default, Logger):
                 self.logger.info('Computing uniqueness...')
                 self.compute_uniqueness()
                 self.logger.info('Selecting...')
-                self.select()
+                self.iterative_select()
                 self.save()
 
         except KeyboardInterrupt:
@@ -327,10 +327,52 @@ class Hub(Default, Logger):
             else:
                 self.population[new_index].inerit_from(self.offspring_pool[individual_index-self.pop_size])
 
+
+    def compute_novelty(self, indexes):
+        for individual_index in indexes:
+            distance = 0.
+            for individual2_index in indexes:
+                if individual_index != individual2_index:
+                    distance += 1. - policy_similarity(self.behavior_embeddings[individual_index],
+                                                       self.behavior_embeddings[individual2_index],
+                                                       self.similarity_l)
+            distance /= np.float32((len(indexes)-1))
+            self.perf_and_uniqueness[1, individual_index] = distance
+
     def iterative_select(self):
         index = 0
-        pool = [0]
-        for index in range(1, self.pop_size+self.n_offspring):
+        for pop in [self.population, self.offspring_pool]:
+            for individual in pop:
+                self.perf_and_uniqueness[0, index, 0] = individual.performance
+                index += 1
+
+
+        selected = list(range(0, self.pop_size))
+        for index in range(self.pop_size, self.pop_size+self.n_offspring):
+            selected.append(index)
+            self.compute_novelty(selected)
+            frontiers = ND_sort(self.perf_and_uniqueness[:, selected])
+            print(frontiers)
+            if len(frontiers[-1]) == 1:
+                frontiers.pop()
+            else:
+                 frontiers[-1] = list(sorted(frontiers[-1], key=lambda index: self.perf_and_uniqueness[0, index, 0]))[1:]
+
+            selected = [selected[index] for frontier in frontiers for index in frontier]
+
+        # get stats of selection...
+        full_path = 'checkpoints/' + self.running_instance_id + '/ckpt_' + str(
+            self.population.checkpoint_index) + '/'
+        plot_perf_uniq(self.perf_and_uniqueness[:, :, 0], selected, self.population, full_path)
+
+        print(self.perf_and_uniqueness[:, selected, 0])
+
+        for new_index, individual_index in enumerate(sorted(selected)):
+            if individual_index < self.pop_size:
+                self.population[new_index].inerit_from(self.population[individual_index])
+            else:
+                self.population[new_index].inerit_from(self.offspring_pool[individual_index - self.pop_size])
+
 
 
 
