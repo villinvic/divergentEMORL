@@ -117,8 +117,12 @@ class BoxingRewards:
         self.values[:, :] = np.sum([self[event]*reward_shape[event]/state_scale for event, state_scale in self.base.items()], axis=0)
 
         all_wins = np.sum(np.clip(base_rewards, 0., 1.))
-        all_points = np.sum(np.abs(base_rewards)) + 1e-8
-        performance = all_wins/all_points * 100  - 50
+        all_points = np.sum(np.abs(base_rewards))
+        if all_points == 0:
+            performance = np.nan
+        else:
+            performance = all_wins/all_points * 100  - 50
+
         print(performance)
 
         return self.values, performance
