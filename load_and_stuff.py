@@ -7,6 +7,7 @@ from EMORL.Individual import Individual
 from EMORL.Population import Population
 from EMORL.plotting import plot_stats
 # from Game.core import Game
+from pprint import pprint
 from Gym.Boxing import Boxing as Game
 
 
@@ -34,15 +35,20 @@ def load_and_stuff(path, pop_size, stuff='plot'):
 
     pop = Population(pop_size, game.state_dim, game.action_dim)
     pop.initialize(trainable=True, batch_dim=(128, 80))
+    pop.load(path)
     player = Individual(-1, game.state_dim, game.action_dim, [])
 
     def plot():
-        pop.load(path)
+
         plot_stats(pop, '')
 
     def visualize_pop():
-        for individual in pop:
+        for i, individual in enumerate(pop):
             player.set_arena_genes(individual.get_arena_genes())
+            player.genotype['brain'].lstm.reset_states()
+            print('-------individual', i, '-------')
+            pprint([individual.genotype['learning'],individual.genotype['experience']])
+
             play_episode(game, player)
 
     {'plot': plot,

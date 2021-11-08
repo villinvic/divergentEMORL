@@ -452,9 +452,9 @@ class AC(tf.keras.Model, Default):
             if i == j:
                 return 1.
             elif i == parent_index:
-                return self.compute_similarity(new_behavior_embedding, behavior_embeddings[j], l)
+                return self.compute_similarity_bc(new_behavior_embedding, behavior_embeddings[j], l)
             elif j == parent_index:
-                return self.compute_similarity(behavior_embeddings[i], new_behavior_embedding, l)
+                return self.compute_similarity_bc(behavior_embeddings[i], new_behavior_embedding, l)
             else:
                 return existing_K[i, j]
 
@@ -498,9 +498,13 @@ class AC(tf.keras.Model, Default):
         return tf.concat([returns, tf.expand_dims(last_vr, axis=1)], axis=1)
 
     @staticmethod
-    def compute_similarity(dist_1, dist_2, l):
+    def compute_similarity_kl(dist_1, dist_2, l):
         return tf.exp(-tf.square(tf.reduce_mean(tf.reduce_sum(
             dist_1 * (tf.math.log(dist_1 + 1e-8) - tf.math.log(dist_2 + 1e-8)), axis=-1)))/(2.*l**2))
+
+    @staticmethod
+    def compute_similarity_bc(dist_1, dist_2, l):
+        return tf.exp(-tf.square(tf.reduce_mean(tf.reduce_sum(-tf.math.log(tf.sqrt(dist_1*dist_2)+1e-8), axis=-1)))/(2.*l**2))
 
     def get_params(self):
         actor_weights = [dense.get_weights() for dense in [self.dense_1] + self.policy.denses]

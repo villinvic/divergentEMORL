@@ -18,8 +18,14 @@ def uniform_with_hole(low=70, high=200):
 def kl_divergence(a, b):
     return np.mean(np.sum(a * (np.log(a+1e-8) - np.log(b+1e-8)), axis=-1))
 
-def policy_similarity(a, b, l=1):
-    return np.exp(-kl_divergence(a, b)**2/(2 * l ** 2))
+def bc_coef(a, b):
+    return np.mean(np.sum(np.sqrt(a * b), axis=-1))
+
+def bc_distance(a, b):
+    return -np.log(bc_coef(a, b)+1e-8)
+
+def policy_similarity(a, b, l=1, func=bc_distance):
+    return np.exp(-func(a, b)**2/(2 * l ** 2))
 
 
 def nn_crossover(a, b, architecture={}):
@@ -163,7 +169,7 @@ if __name__ == '__main__':
     s = np.random.random((256, 80, 100))
     a = Individual(0, 100, 32, [], trainable=True)
     a_w = a.genotype['brain'].get_training_params()
-    a_w['actor_core'][0][0][::15] += np.random.random(a_w['actor_core'][0][0][::15].shape)*0.1
+    a_w['actor_core'][0][0][::15] += np.random.random(a_w['actor_core'][0][0][::15].shape)*0.5
     a_w['actor_core'][0][1][::3] -= np.random.random(a_w['actor_core'][0][1][::3].shape) *0.3
     a.genotype['brain'].set_training_params(a_w)
     b = Individual(0, 100, 32, [], trainable=True)
@@ -177,7 +183,7 @@ if __name__ == '__main__':
     for i, one in enumerate([a_out, b_out, c_out]):
         for j, two in enumerate([a_out, b_out, c_out]):
             if i != j and i < j:
-                print((i, j), policy_similarity(one, two, 1000))
+                print((i, j), policy_similarity(one, two, 0.1), policy_similarity(one, two, l=0.03, func=bc_distance))
 
 
 

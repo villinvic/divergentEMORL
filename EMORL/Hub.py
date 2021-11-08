@@ -346,7 +346,6 @@ class Hub(Default, Logger):
                 self.perf_and_uniqueness[0, index, 0] = individual.performance
                 index += 1
 
-
         selected = list(range(0, self.pop_size))
         for index in range(self.pop_size, self.pop_size+self.n_offspring):
             selected.append(index)
@@ -359,6 +358,8 @@ class Hub(Default, Logger):
                  frontiers[-1] = list(sorted(frontiers[-1], key=lambda index: self.perf_and_uniqueness[0, index, 0]))[1:]
 
             selected = [selected[index] for frontier in frontiers for index in frontier]
+
+        self.compute_novelty(list(range(self.pop_size+self.n_offspring)))
 
         # get stats of selection...
         full_path = 'checkpoints/' + self.running_instance_id + '/ckpt_' + str(
