@@ -135,6 +135,7 @@ class Hub(Default, Logger):
 
     def train(self, index):
         if len(self.exp) >= self.BATCH_SIZE:
+            print('in')
             # Get experience from the queue
             trajectory = pd.DataFrame(self.exp[:self.BATCH_SIZE]).values
             self.exp = self.exp[self.BATCH_SIZE:]
@@ -168,6 +169,8 @@ class Hub(Default, Logger):
                   ', H=', self.offspring_pool[index].mean_entropy, ', alpha=', self.offspring_pool[index].genotype['learning']['entropy_cost'])
 
             self.sample_states(states)
+
+            print('out')
 
             return performance
 
