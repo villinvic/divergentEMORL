@@ -169,8 +169,8 @@ if __name__ == '__main__':
     s = np.random.random((256, 80, 100))
     a = Individual(0, 100, 32, [], trainable=True)
     a_w = a.genotype['brain'].get_training_params()
-    a_w['actor_core'][0][0][::15] += np.random.random(a_w['actor_core'][0][0][::15].shape)*0.5
-    a_w['actor_core'][0][1][::3] -= np.random.random(a_w['actor_core'][0][1][::3].shape) *0.3
+    a_w['actor_core'][0][0][::15] += np.random.random(a_w['actor_core'][0][0][::15].shape)*0.9
+    a_w['actor_core'][0][1][::3] -= np.random.random(a_w['actor_core'][0][1][::3].shape) *0.6
     a.genotype['brain'].set_training_params(a_w)
     b = Individual(0, 100, 32, [], trainable=True)
     c = Individual(0, 100, 32, [], trainable=True)
@@ -183,7 +183,7 @@ if __name__ == '__main__':
     for i, one in enumerate([a_out, b_out, c_out]):
         for j, two in enumerate([a_out, b_out, c_out]):
             if i != j and i < j:
-                print((i, j), policy_similarity(one, two, 0.1), policy_similarity(one, two, l=0.03, func=bc_distance))
+                print((i, j), policy_similarity(one, two, 3, func=kl_divergence), policy_similarity(one, two, l=3, func=bc_distance))
 
 
 

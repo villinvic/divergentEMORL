@@ -24,10 +24,10 @@ for i in range(10):
         if i==j:
             K[i, j] = 1.
         elif j < i:
-            K[i, j] = 0.
+            K[i, j] =  policy_similarity(policies[i], policies[j], l=3)
         else:
-            K[i, j] =  policy_similarity(policies[i], policies[j], l=15000)
+            K[i, j] =  policy_similarity(policies[i], policies[j], l=3)
         kl[i, j] = 1 - K[i, j]
 
 print(K)
-print( np.linalg.det(K), np.linalg.slogdet(K))
+print(np.linalg.det(K), np.linalg.slogdet(K))
