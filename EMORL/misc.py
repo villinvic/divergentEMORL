@@ -19,10 +19,10 @@ def kl_divergence(a, b):
     return np.mean(np.sum(a * (np.log(a+1e-8) - np.log(b+1e-8)), axis=-1))
 
 def bc_coef(a, b):
-    return np.mean(np.sum(np.sqrt(a * b), axis=-1))
+    return np.sum(np.sqrt(a * b), axis=-1)
 
 def bc_distance(a, b):
-    return -np.log(bc_coef(a, b)+1e-8)
+    return np.mean(-np.log(bc_coef(a, b)+1e-8))
 
 def policy_similarity(a, b, l=1, func=bc_distance):
     return np.exp(-func(a, b)**2/(2 * l ** 2))
