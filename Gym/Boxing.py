@@ -34,10 +34,12 @@ class Boxing:
         self.scales = np.array(
             [0.05, 0.05, 0.05, 0.05, 0.01, 0.01, 0.014, 0.014, 0.014, 0.004, 0.004, 0.004, 0.004, 0.004, 0.5],
             dtype=np.float32)
-        self.state_dim_base = len(self.indexes)
+
 
         # 'NOOP', 'FIRE', 'UP', 'RIGHT', 'LEFT', 'DOWN', 'UPRIGHT', 'UPLEFT', 'DOWNRIGHT', 'DOWNLEFT'
         self.action_dim = 10
+        self.state_dim_base = len(self.indexes)
+        self.state_dim_actions = len(self.indexes) + self.action_dim
         print(self.action_dim, self.env.observation_space.shape)
         self.framestack = framestack
         self.frameskip = frameskip
@@ -47,13 +49,19 @@ class Boxing:
         self.seconds = 17
         self.frames = 20
 
-        self.state = np.zeros(self.state_dim_base * framestack)
-        self.state[:] = np.tile(self.preprocess(self.env.reset()), framestack)
+        self.state = np.zeros(self.state_dim_actions * framestack)
+        self.action_embedding = np.zeros(self.action_dim, dtype=np.float32)
+
+        self.start_state = np.concatenate([self.preprocess(self.env.reset()), self.action_embedding])
+        self.state[:] = np.tile(self.start_state, framestack)
         self.state_dim = len(self.state)
+
+        self.past_action = 0
 
         # self.action = np.zeros(self.action_dim*2, dtype=np.int16)
 
     def action_to_id(self, action_id):
+        self.past_action = action_id
         return action_id  # [action_id, np.random.randint(0, self.action_dim)]
 
     @staticmethod
@@ -70,6 +78,7 @@ class Boxing:
         frames = obs[self.frames]
         time = minutes + (seconds + frames/60.) / 60.
         obs[0] = time
+
         return (obs[self.indexes] - self.centers) * self.scales
 
     def win(self, done, obs):
@@ -86,13 +95,16 @@ class Boxing:
             reward += rr
         observation = self.preprocess(observation)
         win = self.win(done, observation)
-        self.state[self.state_dim_base:] = self.state[:-self.state_dim_base]
+        self.state[self.state_dim_actions:] = self.state[:-self.state_dim_actions]
         self.state[:self.state_dim_base] = observation
+        self.state[self.state_dim_base:self.state_dim_base] = 0.
+        self.state[self.state_dim_base:self.state_dim_base+self.past_action] = 1.
 
         return done, win
 
     def reset(self):
-        self.state[:] = np.tile(self.preprocess(self.env.reset()), self.framestack)
+        self.state[:] = np.tile(self.start_state, self.framestack)
+        self.past_action = 0
 
     def render(self):
         time.sleep(0.04)

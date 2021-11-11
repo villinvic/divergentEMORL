@@ -152,8 +152,12 @@ class EvolvingVariable(Default):
     def __init__(self, name, domain, perturb_power=0.2, perturb_chance=0.05, reset_chance=0.1, frozen=False):
         super(EvolvingVariable, self).__init__()
         self.name = name
-        self.domain = domain
-        self._current_value = misc.log_uniform(*domain)
+        if 0. in domain:
+            self.domain = (0,0)
+            self._current_value = 0.
+        else:
+            self.domain = domain
+            self._current_value = misc.log_uniform(*domain)
         self.perturb_power = perturb_power
 
         if name == 'gamma':
@@ -166,7 +170,7 @@ class EvolvingVariable(Default):
 
     def perturb(self):
         if not self.frozen and np.random.random() < self.perturb_chance:
-            if np.random.random() < self.reset_chance:
+            if np.random.random() < self.reset_chance and 0. not in self.domain:
                 self._current_value = misc.log_uniform(*self.domain)
             else:
                 perturbation = np.random.choice([1.-self.perturb_power, 1.+self.perturb_power])
