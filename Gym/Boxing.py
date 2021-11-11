@@ -3,6 +3,7 @@ import time
 import gym
 import numpy as np
 
+np.set_printoptions(suppress=True)
 
 # import retro
 # 'Boxing-Atari2600'
@@ -97,12 +98,13 @@ class Boxing:
         win = self.win(done, observation)
         self.state[self.state_dim_actions:] = self.state[:-self.state_dim_actions]
         self.state[:self.state_dim_base] = observation
-        self.state[self.state_dim_base:self.state_dim_base] = 0.
-        self.state[self.state_dim_base:self.state_dim_base+self.past_action] = 1.
+        self.state[self.state_dim_base:self.state_dim_actions] = 0.
+        self.state[self.state_dim_base+self.past_action] = 1.
 
         return done, win
 
     def reset(self):
+        self.env.reset()
         self.state[:] = np.tile(self.start_state, self.framestack)
         self.past_action = 0
 

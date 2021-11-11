@@ -1,5 +1,5 @@
 name, lower_bound, higher_bound
-"distance_away", 0.0001, 0.01
+"distance_away", 0.0001, 0.01z
 "distance_toward", 0.0001, 0.01
 "hit", 0.01, 0.5
 "hurt", 0.01, 0.5

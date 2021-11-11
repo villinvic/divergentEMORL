@@ -81,7 +81,7 @@ class Worker(Default):
         self.trajectory['hidden_states'][:] = np.concatenate([hidden_h,hidden_c], axis=0)
 
     def __call__(self):
-        for _ in range(30):
+        for _ in range(3):
             x = self.get_params()
             if x :
                 break
