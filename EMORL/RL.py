@@ -417,12 +417,12 @@ class AC(tf.keras.Model, Default):
                                           + alpha * ent)
 
                 behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
-                #new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
-                #_, log_div = tf.linalg.slogdet(new_K + tf.eye(size) * 10e-4)
+                new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
+                _, log_div = tf.linalg.slogdet(new_K + tf.eye(size+1) * 10e-4)
 
-                behavior_distance = self.compute_distance_score(behavior_embedding, phi, l) + 1e-8
+                #behavior_distance = self.compute_distance_score(behavior_embedding, phi, l) + 1e-8
 
-                total_loss = 0.5 * v_loss + p_loss - lamb * tf.math.log(behavior_distance)
+                total_loss = 0.5 * v_loss + p_loss - lamb * tf.math.log(log_div)
 
             grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
                                  + self.V.trainable_variables + self.dense_1.trainable_variables)
@@ -442,27 +442,27 @@ class AC(tf.keras.Model, Default):
             mean_entropy = tf.reduce_mean(ent)
             min_entropy = tf.reduce_min(ent)
             # max_entropy = tf.reduce_max(ent)
-            return v_loss, mean_entropy, min_entropy, behavior_distance, tf.reduce_min(
+            return v_loss, mean_entropy, min_entropy, log_div, tf.reduce_min(
                 p_log), tf.reduce_max(p_log), x
 
     def compute_kernel(self, new_behavior_embedding, behavior_embeddings, existing_K, l, size, parent_index):
 
         def similarity(cursor):
             int_cursor = tf.cast(cursor, tf.int32)
-            i = int_cursor // size
-            j = int_cursor % size
+            i = int_cursor // (size+1)
+            j = int_cursor % (size+1)
             if i == j:
                 return 1.
-            elif i == parent_index:
+            elif i == size:
                 return self.compute_similarity_bc(new_behavior_embedding, behavior_embeddings[j], l)
-            elif j == parent_index:
+            elif j == size:
                 return self.compute_similarity_bc(behavior_embeddings[i], new_behavior_embedding, l)
             else:
                 return existing_K[i, j]
 
-        K = tf.map_fn(similarity, elems=tf.range(size**2, dtype=tf.int32), fn_output_signature=tf.float32)
+        K = tf.map_fn(similarity, elems=tf.range((size+1)**2, dtype=tf.int32), fn_output_signature=tf.float32)
 
-        return tf.reshape(K, (size, size))
+        return tf.reshape(K, (size+1, size+1))
 
     def compute_distance_score(self, new_behavior_embedding, pop_embeddings, l):
         return 1.-self.compute_similarity_bc(tf.expand_dims(new_behavior_embedding, 0), pop_embeddings, l)
@@ -544,7 +544,6 @@ class AC(tf.keras.Model, Default):
             dense.set_weights(dense_layer_weights)
         self.V.v.set_weights(params['value_head'])
 
-    @tf.function
     def get_distribution(self, states):
         with tf.device("/gpu:{}".format(0)):
             x = self.lstm(states)

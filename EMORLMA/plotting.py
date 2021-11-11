@@ -1,8 +1,11 @@
 import matplotlib.pyplot as plt
 import os
+import sys
+
+import numpy as np
 
 
-def plot_stats(perf_and_uniqueness, selected, new_pop, path):
+def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, path):
     plt.clf()
 
     selected_set = set(selected)
@@ -34,7 +37,7 @@ def plot_stats(perf_and_uniqueness, selected, new_pop, path):
 
 
     plt.ylabel(r'$\zeta_{perf}(\pi)$')
-    plt.xlabel(r'$\zeta_{kl}(\pi)$')
+    plt.xlabel(r'$\zeta_{nov}(\pi)$')
     plt.xlim(-0.05, 1.05)
     plt.legend()
     plt.draw()
@@ -47,5 +50,86 @@ def plot_stats(perf_and_uniqueness, selected, new_pop, path):
     plt.savefig(path+'scatter.png')
 
     plt.clf()
+
+
+def plot_stats(population, path):
+    plt.style.use(['science', 'ieee'])
+    plt.clf()
+
+    #x = np.empty((population.size,), dtype=np.float32)
+    index = 0
+    r = 3
+    c = 5
+
+    dx, dy = 1, 1
+    h, w = plt.figaspect(float(dy * r) / float(dx * c))
+
+    fig, plots = plt.subplots(r, c, figsize=(h*4, w*4))
+
+
+
+    for hyperparameter in ['experience', 'learning']:
+        for name in population.stats['hyperparameter'][hyperparameter][0][0]._variables:
+            row = index // c
+            col = index % c
+            index += 1
+            plot = plots[row][col]
+
+            means = []
+            mins = []
+            maxes = []
+            for generation in population.stats['hyperparameter'][hyperparameter]:
+                x = [None] * population.size
+                for i in range(population.size):
+                    x[i] = generation[i][name]
+                means.append(np.mean(x))
+                mins.append(np.min(x))
+                maxes.append(np.max(x))
+
+
+            plot.plot(np.arange(len(means)), means, label='Mean')
+            plot.plot(np.arange(len(means)), mins, label='Min')
+            plot.plot(np.arange(len(means)), maxes, label='Max')
+            plot.set_ylabel('%s' % name.capitalize().replace('_', ' '))
+            plot.set_xlabel('Iterations')
+            plot.set_yscale('log')
+            plot.legend()
+
+    for name in ['entropy', 'performance']:
+        means = []
+        mins = []
+        maxes = []
+
+        row = index // c
+        col = index % c
+        index += 1
+        plot = plots[row][col]
+
+        for generation in population.stats[name]:
+            means.append(np.nanmean(generation))
+            mins.append(np.nanmin(generation))
+            maxes.append(np.nanmax(generation))
+        plot.plot(np.arange(len(means)), means, label='Mean')
+        plot.plot(np.arange(len(means)), mins, label='Min')
+        plot.plot(np.arange(len(means)), maxes, label='Max')
+        plot.set_ylabel('%s' % name.capitalize().replace('_', ' '))
+        plot.set_xlabel(r'Iterations')
+        plot.legend()
+
+    row = index // c
+    col = index % c
+    index += 1
+    plot = plots[row][col]
+
+
+    plot.plot(np.arange(len(population.stats['diversity'])), population.stats['diversity'], label='Mean')
+    plot.set_ylabel('Diversity')
+    plot.set_xlabel('Iterations')
+
+    print('ok')
+    fig.savefig(path + 'stats.png')
+
+
+
 
     

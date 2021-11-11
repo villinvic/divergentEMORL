@@ -1,3 +1,5 @@
+import sys
+
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, LSTM
 from tensorflow.keras.backend import set_value
@@ -6,6 +8,7 @@ from tensorflow.keras.activations import relu, softmax
 from copy import deepcopy
 
 from config.Loader import Default
+from EMORLMA.misc import nn_crossover
 
 class Distribution(object):
     def __init__(self, dim):
@@ -161,7 +164,6 @@ class Policy(tf.keras.Model, Default):
 
         self.prob = Dense(action_dim, dtype='float32', name="prob", activation="softmax")
 
-    @tf.function
     def init_body(self, features):
 
         if self.has_lstm:
@@ -277,22 +279,30 @@ class AC(tf.keras.Model, Default):
                                      axis=2)
         self.pattern = tf.expand_dims([tf.fill((self.TRAJECTORY_LENGTH-1,), i) for i in range(self.BATCH_SIZE)], axis=2)
 
-    def train(self, log_name, training_params, states, actions, rewards, probs, landmark_dist, gpu):
+    def train(self, index, parent_index, S, phi, K, l, size,
+              training_params, states, actions, rewards, probs, hidden_states, gpu):
         # do some stuff with arrays
         # print(states, actions, rewards, dones)
         # Set both networks with corresponding initial recurrent state
         self.optim.learning_rate.assign(training_params['learning_rate'])
 
-        v_loss, mean_entropy, min_entropy, policy_d, min_logp, max_logp, grad_norm \
+        if training_params['dvd_lambda'] > 0:
+            v_loss, mean_entropy, min_entropy, div, min_logp, max_logp, grad_norm \
+                = self._train_DvD(S, phi, K, tf.cast(training_params['dvd_lambda'], tf.float32), l, size, parent_index,
+                              tf.cast(training_params['entropy_cost'], tf.float32),
+                              tf.cast(training_params['gamma'], tf.float32), states, actions, rewards, probs,
+                              hidden_states, gpu)
+        else:
+            v_loss, mean_entropy, min_entropy, div, min_logp, max_logp, grad_norm \
             = self._train(tf.cast(training_params['entropy_cost'], tf.float32),
-                          tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs,
-                          landmark_dist, tf.cast(training_params['beta'],tf.float32), gpu)
+                          tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs, hidden_states, gpu)
 
-        print(v_loss, policy_d, mean_entropy, grad_norm, tf.reduce_sum(tf.reduce_mean(rewards, axis=0)))
+        log_name = str(index)
+        print(v_loss, div, mean_entropy, grad_norm, tf.reduce_sum(tf.reduce_mean(rewards, axis=0)))
 
         tf.summary.scalar(name=log_name+"/v_loss", data=v_loss)
         tf.summary.scalar(name=log_name+"/min_entropy", data=min_entropy)
-        tf.summary.scalar(name=log_name+"/max_entropy", data=policy_d)
+        tf.summary.scalar(name=log_name+"/diversity", data=div)
         tf.summary.scalar(name=log_name+"/mean_entropy", data=mean_entropy)
         tf.summary.scalar(name=log_name+"/ent_scale", data=training_params['entropy_cost'])
         tf.summary.scalar(name=log_name+"/gamma", data=training_params['gamma'])
@@ -303,11 +313,11 @@ class AC(tf.keras.Model, Default):
         #tf.summary.scalar(name="misc/distance", data=tf.reduce_mean(states[:, :, -1]))
         tf.summary.scalar(name=log_name+"/reward", data=tf.reduce_sum(tf.reduce_mean(rewards, axis=0)))
 
-        return mean_entropy
+        return mean_entropy.numpy()
 
 
     @tf.function
-    def _train(self, alpha, gamma, states, actions, rewards, probs, landmark_dist, beta, gpu):
+    def _train(self, alpha, gamma, states, actions, rewards, probs, hidden_states, gpu):
         '''
         Main training function
         '''
@@ -317,7 +327,10 @@ class AC(tf.keras.Model, Default):
 
             with tf.GradientTape() as tape:
                 # Optimize the actor and critic
-                lstm_states = states
+                if self.has_lstm:
+                    lstm_states = self.lstm(states, initial_state=[hidden_states[:,0],hidden_states[:, 1]])
+                else:
+                    lstm_states = states
                 lstm_states = self.dense_1(lstm_states)
 
                 v_all = self.V(lstm_states)[: ,:, 0]
@@ -333,21 +346,19 @@ class AC(tf.keras.Model, Default):
                 p_log = tf.math.log(p + 1e-8)
 
                 ent = - tf.reduce_sum(tf.multiply(p_log, p), -1)
-
-                policy_distance = self.compute_distil(landmark_dist, p)
-
                 taken_p_log = tf.gather_nd(p_log, indices, batch_dims=0)
+
+
 
                 p_loss = - tf.reduce_mean( tf.stop_gradient(rho_mu) * taken_p_log
                                            * tf.stop_gradient(targets[:, 1:]*gamma + rewards - v_all[:, :-1])
-                                           + alpha * ent + beta * policy_distance*0)
-                    #taken_p_log * tf.stop_gradient(advantage) + self.entropy_scale * ent)
-
+                                           + alpha * ent)
 
 
                 total_loss = 0.5 * v_loss + p_loss
 
-            grad = tape.gradient(total_loss, self.policy.trainable_variables
+
+            grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
                                  + self.V.trainable_variables + self.dense_1.trainable_variables)
 
             # x is used to track the gradient size
@@ -358,15 +369,104 @@ class AC(tf.keras.Model, Default):
                 x += tf.reduce_mean(tf.abs(gg))
             x /= c
 
-            self.optim.apply_gradients(zip(grad, self.policy.trainable_variables
+            self.optim.apply_gradients(zip(grad, self.policy.trainable_variables + self.lstm.trainable_variables
                                            + self.V.trainable_variables + self.dense_1.trainable_variables))
 
             self.step.assign_add(1)
             mean_entropy = tf.reduce_mean(ent)
             min_entropy = tf.reduce_min(ent)
             max_entropy = tf.reduce_max(ent)
-            return v_loss, mean_entropy, min_entropy, tf.reduce_mean(policy_distance), tf.reduce_min(
+            return v_loss, mean_entropy, min_entropy, max_entropy, tf.reduce_min(
                 p_log), tf.reduce_max(p_log), x
+
+    @tf.function
+    def _train_DvD(self, S, phi, K, lamb, l, size, parent_index,
+               alpha, gamma, states, actions, rewards, probs, hidden_states, gpu):
+        '''
+        Main training function
+        '''
+        with tf.device("/gpu:{}".format(gpu) if gpu >= 0 else "/cpu:0"):
+
+            actions = tf.cast(actions, dtype=tf.int32)
+
+            with tf.GradientTape() as tape:
+                # Optimize the actor and critic
+                if self.has_lstm:
+                    lstm_states = self.lstm(states, initial_state=[hidden_states[:, 0], hidden_states[:, 1]])
+                else:
+                    lstm_states = states
+                lstm_states = self.dense_1(lstm_states)
+
+                v_all = self.V(lstm_states)[:, :, 0]
+                p = self.policy.get_probs(lstm_states[:, :-1])
+                kl = tf.divide(p, probs + 1e-4)  # tf.reduce_sum(p * tf.math.log(tf.divide(p, probs)), axis=-1)
+                indices = tf.concat(values=[self.pattern, self.range_, tf.expand_dims(actions, axis=2)], axis=2)
+                rho_mu = tf.minimum(1., tf.gather_nd(kl, indices, batch_dims=0))
+                targets = self.compute_trace_targets(v_all, rewards, rho_mu, gamma)
+                # targets = self.compute_gae(v_all[:, :-1], rewards[:, :-1], v_all[:, -1])
+                advantage = tf.stop_gradient(targets) - v_all
+                v_loss = tf.reduce_mean(tf.square(advantage))
+
+                p_log = tf.math.log(p + 1e-8)
+
+                ent = - tf.reduce_sum(tf.multiply(p_log, p), -1)
+                taken_p_log = tf.gather_nd(p_log, indices, batch_dims=0)
+
+                p_loss = - tf.reduce_mean(tf.stop_gradient(rho_mu) * taken_p_log
+                                          * tf.stop_gradient(targets[:, 1:] * gamma + rewards - v_all[:, :-1])
+                                          + alpha * ent)
+
+                behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
+                #new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
+                #_, log_div = tf.linalg.slogdet(new_K + tf.eye(size) * 10e-4)
+
+                behavior_distance = self.compute_distance_score(behavior_embedding, phi, l) + 1e-8
+
+                total_loss = 0.5 * v_loss + p_loss - lamb * tf.math.log(behavior_distance)
+
+            grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
+                                 + self.V.trainable_variables + self.dense_1.trainable_variables)
+
+            # x is used to track the gradient size
+            x = 0.0
+            c = 0.0
+            for gg in grad:
+                c += 1.0
+                x += tf.reduce_mean(tf.abs(gg))
+            x /= c
+
+            self.optim.apply_gradients(zip(grad, self.policy.trainable_variables + self.lstm.trainable_variables
+                                           + self.V.trainable_variables + self.dense_1.trainable_variables))
+
+            self.step.assign_add(1)
+            mean_entropy = tf.reduce_mean(ent)
+            min_entropy = tf.reduce_min(ent)
+            # max_entropy = tf.reduce_max(ent)
+            return v_loss, mean_entropy, min_entropy, behavior_distance, tf.reduce_min(
+                p_log), tf.reduce_max(p_log), x
+
+    def compute_kernel(self, new_behavior_embedding, behavior_embeddings, existing_K, l, size, parent_index):
+
+        def similarity(cursor):
+            int_cursor = tf.cast(cursor, tf.int32)
+            i = int_cursor // size
+            j = int_cursor % size
+            if i == j:
+                return 1.
+            elif i == parent_index:
+                return self.compute_similarity_bc(new_behavior_embedding, behavior_embeddings[j], l)
+            elif j == parent_index:
+                return self.compute_similarity_bc(behavior_embeddings[i], new_behavior_embedding, l)
+            else:
+                return existing_K[i, j]
+
+        K = tf.map_fn(similarity, elems=tf.range(size**2, dtype=tf.int32), fn_output_signature=tf.float32)
+
+        return tf.reshape(K, (size, size))
+
+    def compute_distance_score(self, new_behavior_embedding, pop_embeddings, l):
+        return 1.-self.compute_similarity_bc(tf.expand_dims(new_behavior_embedding, 0), pop_embeddings, l)
+
 
     def compute_gae(self, v, rewards, last_v, gamma):
         v = tf.transpose(v)
@@ -404,9 +504,13 @@ class AC(tf.keras.Model, Default):
         return tf.concat([returns, tf.expand_dims(last_vr, axis=1)], axis=1)
 
     @staticmethod
-    def compute_distil(dist_1, dist_2):
-        return tf.reduce_sum(
-            dist_1 * (tf.math.log(dist_1 + 1e-8) - tf.math.log(dist_2 + 1e-8)), axis=-1)
+    def compute_similarity_kl(dist_1, dist_2, l):
+        return tf.exp(-tf.square(tf.reduce_mean(tf.reduce_sum(
+            dist_1 * (tf.math.log(dist_1 + 1e-8) - tf.math.log(dist_2 + 1e-8)), axis=-1)))/(2.*l**2))
+
+    @staticmethod
+    def compute_similarity_bc(dist_1, dist_2, l):
+        return tf.exp(-tf.square(tf.reduce_mean(-tf.math.log(tf.reduce_sum(tf.sqrt(dist_1*dist_2), axis=-1)+1e-8)))/(2.*l**2))
 
     def get_params(self):
         actor_weights = [dense.get_weights() for dense in [self.dense_1] + self.policy.denses]
@@ -443,14 +547,16 @@ class AC(tf.keras.Model, Default):
     @tf.function
     def get_distribution(self, states):
         with tf.device("/gpu:{}".format(0)):
-            x = self.dense_1(states)
+            x = self.lstm(states)
+            x = self.dense_1(x)
             x = self.policy.get_probs(x)
         return x
 
-    @tf.function
-    def init_body(self, lstm):
+    def init_body(self, states):
         if self.has_lstm:
-            lstm = self.lstm(lstm)
+            lstm = self.lstm(states)
+        else:
+            lstm = states
         lstm = self.dense_1(lstm)
         x = self.policy.get_probs(lstm[:, 1:])
         self.V(lstm)
@@ -459,107 +565,55 @@ class AC(tf.keras.Model, Default):
         pass
     
     def crossover(self, other_policy):
-        model_size = np.sum([np.prod(v.get_shape().as_list()) for v in self.trainable_variables])
-        cross_point = np.random.randint(0, model_size)
-        c = 0
         parents = [self.get_training_params(), other_policy.get_training_params()]
-        np.random.shuffle(parents)
-
-        if parents[0]['lstm']:
-            for i in range(len(parents[0]['lstm'])):
-                if parents[0]['lstm'][i].ndim > 1 :
-                    for j in range(len(parents[0]['lstm'][i])):
-                            if c > cross_point:
-                                parents[0]['lstm'][i][j][:] = parents[1]['lstm'][i][j]
-                            elif c + len(parents[0]['lstm'][i][j]) >= cross_point:
-                                parents[0]['lstm'][i][j][cross_point-c:] = parents[1]['lstm'][i][j][cross_point-c:]
-                            c += len(parents[0]['lstm'][i][j])
+        l = []
+        for w in parents:
+            l.append([])
+            for layer_name, weights in w.items():
+                if 'core' in layer_name:
+                    for sub_layer in weights:
+                        l[-1].append(sub_layer[0])
+                        l[-1][-1] = np.concatenate([l[-1][-1], sub_layer[1][np.newaxis]], axis=0)
                 else:
-                    if c > cross_point:
-                        parents[0]['lstm'][i][:] = parents[1]['lstm'][i]
-                    elif c + len(parents[0]['lstm'][i]) >= cross_point:
-                        parents[0]['lstm'][i][cross_point - c:] = parents[1]['lstm'][i][cross_point - c:]
-                    c += len(parents[0]['lstm'][i])
+                    if 'lstm' in layer_name:
+                        l[-1].append(weights[0][:, :weights[0].shape[1] * 3 // 4])
+                        l[-1].append(weights[0][:, weights[0].shape[1] * 3 // 4:])
+                        l[-1].append(weights[1])
+                        l[-1][-3] = np.concatenate([l[-1][-3], weights[-1][np.newaxis, :weights[0].shape[1] * 3 // 4]],
+                                                   axis=0)
+                        l[-1][-2] = np.concatenate([l[-1][-2], weights[-1][np.newaxis, weights[0].shape[1] * 3 // 4:]],
+                                                   axis=0)
+                    else:
+                        l[-1].append(weights[0])
+                        l[-1][-1] = np.concatenate([l[-1][-1], weights[1][np.newaxis]], axis=0)
 
-        for i in range(len(parents[0]['dense_1'])):
-            if parents[0]['dense_1'][i].ndim > 1:
-                for j in range(len(parents[0]['dense_1'][i])):
-                    if c > cross_point:
-                        parents[0]['dense_1'][i][j][:] = parents[1]['dense_1'][i][j]
-                    elif c + len(parents[0]['dense_1'][i][j]) >= cross_point:
-                        parents[0]['dense_1'][i][j][cross_point - c:] = parents[1]['dense_1'][i][j][cross_point - c:]
-                    c += len(parents[0]['dense_1'][i][j])
+        crossovered = nn_crossover(*l, architecture={
+            # Automate ?
+            0: None, 1: None, 2: None, 3: 1, 4: 3, 5: 4, 6: 3, 7: 6
+        })
+
+        count = 0
+        for layer_name, weights in parents[0].items():
+            if 'core' in layer_name:
+                for sub_layer_i in range(len(weights)):
+                    weights[sub_layer_i][0][:] = crossovered[count][:-1]
+                    weights[sub_layer_i][1][:] = crossovered[count][-1]
+                    count += 1
             else:
-                if c > cross_point:
-                    parents[0]['dense_1'][i][:] = parents[1]['dense_1'][i]
-                elif c + len(parents[0]['dense_1'][i]) >= cross_point:
-                    parents[0]['dense_1'][i][cross_point - c:] = parents[1]['dense_1'][i][cross_point - c:]
-                c += len(parents[0]['dense_1'][i])
+                if 'lstm' in layer_name:
+                    print(weights[0].shape)
+                    weights[0][:, :weights[0].shape[1] * 3 // 4] = crossovered[count][:-1]
+                    weights[-1][:weights[0].shape[1] * 3 // 4] = crossovered[count][-1]
+                    count += 1
+                    weights[0][:, weights[0].shape[1] * 3 // 4:] = crossovered[count][:-1]
+                    weights[-1][weights[0].shape[1] * 3 // 4:] = crossovered[count][-1]
+                    count += 1
+                    weights[1][:] = crossovered[count]
+                    count += 1
 
-        for i in range(len(parents[0]['actor_core'])):
-            for j in range(len(parents[0]['actor_core'][i])):
-                if parents[0]['actor_core'][i][j].ndim > 1 :
-                    for k in range(len(parents[0]['actor_core'][i][j])):
-                            if c > cross_point:
-                                parents[0]['actor_core'][i][j][k][:] = parents[1]['actor_core'][i][j][k]
-                            elif c + len(parents[0]['actor_core'][i][j][k]) >= cross_point:
-                                parents[0]['actor_core'][i][j][k][cross_point-c:] = parents[1]['actor_core'][i][j][k][cross_point-c:]
-                            c += len(parents[0]['actor_core'][i][j][k])
                 else:
-                    if c > cross_point:
-                        parents[0]['actor_core'][i][j][:] = parents[1]['actor_core'][i][j]
-                    elif c + len(parents[0]['actor_core'][i][j]) >= cross_point:
-                        parents[0]['actor_core'][i][j][cross_point - c:] = parents[1]['actor_core'][i][j][cross_point - c:]
-                    c += len(parents[0]['actor_core'][i][j])
-
-        for i in range(len(parents[0]['actor_head'])):
-            if parents[0]['actor_head'][i].ndim > 1:
-                for j in range(len(parents[0]['actor_head'][i])):
-                    if c > cross_point:
-                        parents[0]['actor_head'][i][j][:] = parents[1]['actor_head'][i][j]
-                    elif c + len(parents[0]['actor_head'][i][j]) >= cross_point:
-                        parents[0]['actor_head'][i][j][cross_point - c:] = parents[1]['actor_head'][i][j][cross_point - c:]
-                    c += len(parents[0]['actor_head'][i][j])
-            else:
-                if c > cross_point:
-                    parents[0]['actor_head'][i][:] = parents[1]['actor_head'][i]
-                elif c + len(parents[0]['actor_head'][i]) >= cross_point:
-                    parents[0]['actor_head'][i][cross_point - c:] = parents[1]['actor_head'][i][cross_point - c:]
-                c += len(parents[0]['actor_head'][i])
-
-
-        for i in range(len(parents[0]['value_core'])):
-            for j in range(len(parents[0]['value_core'][i])):
-                if parents[0]['value_core'][i][j].ndim > 1 :
-                    for k in range(len(parents[0]['value_core'][i][j])):
-                            if c > cross_point:
-                                parents[0]['value_core'][i][j][k][:] = parents[1]['value_core'][i][j][k]
-                            elif c + len(parents[0]['value_core'][i][j][k]) >= cross_point:
-                                parents[0]['value_core'][i][j][k][cross_point-c:] = parents[1]['value_core'][i][j][k][cross_point-c:]
-                            c += len(parents[0]['value_core'][i][j][k])
-                else:
-                    if c > cross_point:
-                        parents[0]['value_core'][i][j][:] = parents[1]['value_core'][i][j]
-                    elif c + len(parents[0]['value_core'][i][j]) >= cross_point:
-                        parents[0]['value_core'][i][j][cross_point - c:] = parents[1]['value_core'][i][j][cross_point - c:]
-                    c += len(parents[0]['value_core'][i][j])
-
-
-        for i in range(len(parents[0]['value_head'])):
-            if parents[0]['value_head'][i].ndim > 1:
-                for j in range(len(parents[0]['value_head'][i])):
-                    if c > cross_point:
-                        parents[0]['value_head'][i][j][:] = parents[1]['value_head'][i][j]
-                    elif c + len(parents[0]['value_head'][i][j]) >= cross_point:
-                        parents[0]['value_head'][i][j][cross_point - c:] = parents[1]['value_head'][i][j][cross_point - c:]
-                    c += len(parents[0]['value_head'][i][j])
-            else:
-                if c > cross_point:
-                    parents[0]['value_head'][i][:] = parents[1]['value_head'][i]
-                elif c + len(parents[0]['value_head'][i]) >= cross_point:
-                    parents[0]['value_head'][i][cross_point - c:] = parents[1]['value_head'][i][cross_point - c:]
-                c += len(parents[0]['value_head'][i])
-                    
-            
+                    weights[0][:] = crossovered[count][:-1]
+                    weights[1][:] = crossovered[count][-1]
+                    count += 1
 
         self.set_training_params(parents[0])

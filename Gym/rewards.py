@@ -68,6 +68,7 @@ class TennisRewards:
 
 
 class BoxingRewards:
+
     base = {
         'distance_away': 0.05,
         'distance_toward': 0.05,
@@ -78,7 +79,6 @@ class BoxingRewards:
     }
 
     main = 'win'
-
 
     def __init__(self, batch_size, trajectory_length):
 

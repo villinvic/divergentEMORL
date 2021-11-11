@@ -2,7 +2,7 @@ import numpy as np
 
 from config.Loader import Default
 from EMORL import misc
-from EMORL.RL import Policy, AC
+from EMORLMA.RL import Policy, AC
 from collections import deque
 from copy import deepcopy
 
@@ -17,7 +17,7 @@ class Genotype(Default):
         'brain'
     ]
 
-    def __init__(self, input_dim, output_dim, trainable=False, is_dummy=False):
+    def __init__(self, input_dim, output_dim, batch_dim=(1,1), trainable=False, is_dummy=False):
         super(Genotype, self).__init__()
         self.is_dummy = is_dummy
         self.layer_dims = []
@@ -49,7 +49,7 @@ class Genotype(Default):
                 'experience': RewardShape(),
             }
 
-            self._genes['brain'].init_body(np.zeros((1,1,input_dim)))
+            self._genes['brain'].init_body(np.zeros((batch_dim+(input_dim,))))
 
     def perturb(self):
         if not self.is_dummy:
@@ -73,9 +73,11 @@ class Genotype(Default):
         if trainable:
             self._genes['brain'].set_training_params(new_genes['brain'])
         else:
-            for key in self._base_keys:
-                self._genes[key] = new_genes[key]
             self._genes['brain'].set_params(new_genes['brain'])
+
+        for key in self._base_keys:
+            self._genes[key] = new_genes[key]
+
 
 
     def __repr__(self):
@@ -167,7 +169,7 @@ class EvolvingVariable(Default):
             if np.random.random() < self.reset_chance:
                 self._current_value = misc.log_uniform(*self.domain)
             else:
-                perturbation = np.random.uniform(1.-self.perturb_power, 1.+self.perturb_power)
+                perturbation = np.random.choice([1.-self.perturb_power, 1.+self.perturb_power])
                 self._current_value = np.clip(perturbation * self._current_value, *self.domain) # clip ??
             self.history.append(self._current_value)
 
