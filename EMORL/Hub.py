@@ -310,7 +310,7 @@ class Hub(Default, Logger):
             if len(frontiers[frontier_index])+len(selected) > self.pop_size:
                 #ranked_by_uniqueness = list(sorted(frontiers[frontier_index],
                 #                                            key=lambda index: self.perf_and_uniqueness[0, index, 0]))[len(selected)-self.pop_size:]
-                random = np.random.choice(frontiers[frontier_index], (self.pop_size-len(selected),))
+                random = frontiers[frontier_index][len(selected)-self.pop_size:]
                 selected.extend(random)
             else:
                 selected.extend(frontiers[frontier_index])
