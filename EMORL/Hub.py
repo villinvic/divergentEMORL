@@ -299,9 +299,8 @@ class Hub(Default, Logger):
         for pop in [self.population, self.offspring_pool]:
             for individual in pop:
                 self.perf_and_uniqueness[0, index, 0] = individual.performance
-                if individual.performance == -np.inf:
-                    self.perf_and_uniqueness[1, index, 0] = 0.
                 index += 1
+
 
         frontiers = ND_sort(self.perf_and_uniqueness)
         selected = []
