@@ -3,3 +3,7 @@ TODO
     add margin to motivate higher entropy
     use k-nearest ?
     try with small behavior embedding
+
+    change pop only if diversity not decreased ?
+    verify set and get arenagenes
+    reward shaping entropy
