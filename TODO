@@ -7,3 +7,8 @@ TODO
     change pop only if diversity not decreased ?
     verify set and get arenagenes
     reward shaping entropy
+
+OBS
+    RS diversity not conserved -> no interersting diversity
+    Diversity in population struggles to increase after early iterations
+        -> need to select individuals only if it improves the diversity
