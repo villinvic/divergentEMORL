@@ -149,7 +149,7 @@ class Hub(Default, Logger):
             del self.exp[:]
             while time() - start_time < self.init_time:
                 self.recv_training_data()
-                perf = self.train(index, fake=True)
+                perf = self.fake_train(index)
                 if perf is not None:
                     self.eval_queue.push(perf)
                 # if not improving or too low entropy, drop training
@@ -163,8 +163,21 @@ class Hub(Default, Logger):
 
             self.eval_queue.reset()
 
+    def fake_train(self, index):
+        if len(self.exp) >= self.BATCH_SIZE:
+            # Get experience from the queue
+            trajectory = pd.DataFrame(self.exp[:self.BATCH_SIZE]).values
+            self.exp = self.exp[self.BATCH_SIZE:]
 
-    def train(self, index, fake=False):
+            # Cook data
+            states = np.float32(np.stack(trajectory[:, 0], axis=0))
+            wins = np.float32(np.stack(trajectory[:, 3], axis=0)[:, :-1])
+            rews, performance = self.rewards.compute(states, self.population[index].genotype['experience'], wins)
+            return performance
+
+        return None
+
+    def train(self, index):
         if len(self.exp) >= self.BATCH_SIZE:
             # Get experience from the queue
             trajectory = pd.DataFrame(self.exp[:self.BATCH_SIZE]).values
@@ -182,22 +195,21 @@ class Hub(Default, Logger):
             #performance = np.sum(np.mean(wins, axis=0))
 
             # Train
-            if not fake:
-                with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
-                    self.offspring_pool[index].mean_entropy = \
-                        self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectory,
-                                                                           self.behavior_embeddings[:self.pop_size],
-                                                                           self.policy_kernel, self.similarity_l,
-                                                                           self.top_k,
-                                                                           self.offspring_pool[index].genotype['learning'],
-                                                                           states, actions, rews, probs, hidden_states, 0)
-                self.train_cntr += 1
-                tf.summary.experimental.set_step(self.train_cntr)
+            with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
+                self.offspring_pool[index].mean_entropy = \
+                    self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectory,
+                                                                       self.behavior_embeddings[:self.pop_size],
+                                                                       self.policy_kernel, self.similarity_l,
+                                                                       self.top_k,
+                                                                       self.offspring_pool[index].genotype['learning'],
+                                                                       states, actions, rews, probs, hidden_states, 0)
+            self.train_cntr += 1
+            tf.summary.experimental.set_step(self.train_cntr)
 
-                print('train ! R=', self.eval_queue(), ', trend=', self.eval_queue.trend_count,
-                      ', H=', self.offspring_pool[index].mean_entropy, ', alpha=', self.offspring_pool[index].genotype['learning']['entropy_cost'])
+            print('train ! R=', self.eval_queue(), ', trend=', self.eval_queue.trend_count,
+                  ', H=', self.offspring_pool[index].mean_entropy, ', alpha=', self.offspring_pool[index].genotype['learning']['entropy_cost'])
 
-                self.sample_states(states)
+            self.sample_states(states)
 
             return performance
 
