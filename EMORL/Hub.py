@@ -211,6 +211,7 @@ class Hub(Default, Logger):
 
     def __call__(self):
         try:
+            self.init_eval()
             while True:
                 self.population.checkpoint_index += 1
                 self.logger.info('------| Starting Generation %d |------' %self.population.checkpoint_index)
