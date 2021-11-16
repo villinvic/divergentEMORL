@@ -159,7 +159,7 @@ class Hub(Default, Logger):
                     last_pub_time = current
 
             # use recent training eval for selection
-            self.offspring_pool[index].performance = self.eval_queue()
+            self.population[index].performance = self.eval_queue()
 
             self.eval_queue.reset()
 
