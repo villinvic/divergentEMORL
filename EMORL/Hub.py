@@ -155,7 +155,7 @@ class Hub(Default, Logger):
                 # if not improving or too low entropy, drop training
                 current = time()
                 if current - last_pub_time > 5:
-                    self.pub_params(index)
+                    self.pub_params(index, init=True)
                     last_pub_time = current
 
             # use recent training eval for selection
