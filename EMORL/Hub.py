@@ -78,7 +78,7 @@ class Hub(Default, Logger):
 
         self.top_k_index = np.arange(self.top_k)
         self.policy_kernel = np.empty((self.top_k, self.top_k), dtype=np.float32)
-        self.policy_kernel_p1 = np.empty((self.top_k, self.pop_size+self.n_offspring), dtype=np.float32)
+        self.policy_kernel_p1 = np.empty((self.pop_size+self.n_offspring, self.pop_size+self.n_offspring), dtype=np.float32)
         self.init_sampled_trajectories(dummy_env)
 
 
@@ -327,7 +327,7 @@ class Hub(Default, Logger):
             self.perf_and_uniqueness[1, individual_index] = distance"""
 
     def compute_div_scores(self):
-        for i, index_i in enumerate(self.top_k_index):
+        for i in enumerate(self.pop_size+self.n_offspring):
             for j in range(self.pop_size+self.n_offspring):
                 if i==j:
                     self.policy_kernel_p1[i, j] = 1.
