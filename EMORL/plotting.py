@@ -38,7 +38,8 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, path):
 
     plt.ylabel(r'$\zeta_{perf}(\pi)$')
     plt.xlabel(r'$\zeta_{nov}(\pi)$')
-    #plt.xlim(-0.05, 1.05)
+    plt.xlim(-0.05, 1.05)
+    plt.ylim(-51, 51)
     plt.legend()
     plt.draw()
 

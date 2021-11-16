@@ -75,8 +75,10 @@ class Hub(Default, Logger):
         self.writer = tf.summary.create_file_writer(log_dir)
         self.writer.set_as_default()
 
-        self.policy_kernel = np.empty((self.pop_size, self.pop_size), dtype=np.float32)
-        self.policy_kernel_p1 = np.empty((self.pop_size+self.n_offspring, self.pop_size+self.n_offspring), dtype=np.float32)
+
+        self.top_k_index = np.arange(self.top_k)
+        self.policy_kernel = np.empty((self.top_k, self.top_k), dtype=np.float32)
+        self.policy_kernel_p1 = np.empty((self.top_k, self.pop_size+self.n_offspring), dtype=np.float32)
         self.init_sampled_trajectories(dummy_env)
 
 
@@ -116,13 +118,13 @@ class Hub(Default, Logger):
         for index, individual in enumerate(self.population):
                 self.behavior_embeddings[index, :, :, :] = individual.probabilities_for(self.sampled_trajectory[:, :-1])
 
-        for i in range(self.pop_size):
-            for j in range(self.pop_size):
+        for i, index_i in enumerate(self.top_k_index):
+            for j, index_j in enumerate(self.top_k_index):
                 if i==j:
                     self.policy_kernel[i, j] = 1.
                 elif j > i:
-                    self.policy_kernel[i, j] = policy_similarity(self.behavior_embeddings[i],
-                                                                 self.behavior_embeddings[j],
+                    self.policy_kernel[i, j] = policy_similarity(self.behavior_embeddings[index_i],
+                                                                 self.behavior_embeddings[index_j],
                                                                  l=self.similarity_l)
                 else:
                     self.policy_kernel[i, j] = self.policy_kernel[j, i]
@@ -281,7 +283,7 @@ class Hub(Default, Logger):
             self.perf_and_uniqueness[1, individual_index] = distance"""
 
     def compute_div_scores(self):
-        for i in range(self.pop_size+self.n_offspring):
+        for i, index_i in enumerate(self.top_k_index):
             for j in range(self.pop_size+self.n_offspring):
                 if i==j:
                     self.policy_kernel_p1[i, j] = 1.
@@ -292,8 +294,9 @@ class Hub(Default, Logger):
                     self.policy_kernel_p1[i,j] = self.policy_kernel_p1[j,i]
 
         for index in range(self.pop_size+self.n_offspring):
-            _, logdiv = np.linalg.slogdet(np.delete(np.delete(self.policy_kernel_p1, index, axis=0), index, axis=1))
-            self.perf_and_uniqueness[1, index, 0] = -logdiv
+        #    _, logdiv = np.linalg.slogdet(np.delete(np.delete(self.policy_kernel_p1, index, axis=0), index, axis=1))
+        #    self.perf_and_uniqueness[1, index, 0] = -logdiv
+            self.perf_and_uniqueness[1, index, 0] = 1 - np.mean(self.policy_kernel_p1[:, index])
 
     def select(self):
         index = 0
@@ -322,6 +325,8 @@ class Hub(Default, Logger):
         plot_perf_uniq(self.perf_and_uniqueness[:, :, 0], selected, self.population, full_path)
 
         print(self.perf_and_uniqueness[:, selected, 0])
+
+        self.top_k_index = np.argsort(selected)[:self.top_k]
 
         for new_index, individual_index in enumerate(sorted(selected)):
             if individual_index < self.pop_size:

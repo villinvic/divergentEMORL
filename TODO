@@ -4,8 +4,12 @@ TODO
     use k-nearest ?
     try with small behavior embedding
 
+    behavior kernel with top k individuals
+    bigger pop size
+    shorter training session
+
     change pop only if diversity not decreased ?
-    verify set and get arenagenes
+    verify set and get arenagenes -> ok ?
     reward shaping entropy
 
 OBS
