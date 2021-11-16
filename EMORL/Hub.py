@@ -41,6 +41,9 @@ class Hub(Default, Logger):
         self.population.initialize(trainable=True, batch_dim=(self.BATCH_SIZE, self.TRAJECTORY_LENGTH))
         if ckpt:
             self.load(ckpt)
+        else:
+            self.init_eval()
+
         self.offspring_pool = Population(self.n_offspring, dummy_env.state_dim, dummy_env.action_dim)
         # Init pop
 
@@ -223,7 +226,6 @@ class Hub(Default, Logger):
 
     def __call__(self):
         try:
-            self.init_eval()
             while True:
                 self.population.checkpoint_index += 1
                 self.logger.info('------| Starting Generation %d |------' %self.population.checkpoint_index)
