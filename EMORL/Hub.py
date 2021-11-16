@@ -39,10 +39,7 @@ class Hub(Default, Logger):
         self.logger.info("Population Initialization started...")
         self.population = Population(self.pop_size, dummy_env.state_dim, dummy_env.action_dim)
         self.population.initialize(trainable=True, batch_dim=(self.BATCH_SIZE, self.TRAJECTORY_LENGTH))
-        if ckpt:
-            self.load(ckpt)
-        else:
-            self.init_eval()
+
 
         self.offspring_pool = Population(self.n_offspring, dummy_env.state_dim, dummy_env.action_dim)
         # Init pop
@@ -83,6 +80,11 @@ class Hub(Default, Logger):
         self.policy_kernel = np.empty((self.top_k, self.top_k), dtype=np.float32)
         self.policy_kernel_p1 = np.empty((self.pop_size+self.n_offspring, self.pop_size+self.n_offspring), dtype=np.float32)
         self.init_sampled_trajectories(dummy_env)
+
+        if ckpt:
+            self.load(ckpt)
+        else:
+            self.init_eval()
 
 
     def init_sampled_trajectories(self, dummy_env):
