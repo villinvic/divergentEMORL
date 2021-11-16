@@ -106,11 +106,15 @@ class Hub(Default, Logger):
             self.logger.info('exp waiting: %d ' % len(self.exp))
         self.rcved += received
 
-    def pub_params(self, index):
+    def pub_params(self, index, init=False):
+        if init:
+            pop = self.population
+        else:
+            pop = self.offspring_pool
         try:
             # self.param_socket.send_string(str(individual.id), zmq.SNDMORE)
             # self.param_socket.send_pyobj(individual.get_arena_genes(), flags=zmq.NOBLOCK)
-            self.blob_socket.send_pyobj(self.offspring_pool[index].get_arena_genes())
+            self.blob_socket.send_pyobj(pop[index].get_arena_genes())
         except zmq.ZMQError:
             pass
 
@@ -134,7 +138,33 @@ class Hub(Default, Logger):
         self.population.diversity = div
         return div
 
-    def train(self, index):
+    def init_eval(self):
+        for index in range(self.pop_size):
+            self.logger.info('Init offspring n°%d...' % index)
+            self.pub_params(index, init=True)
+            last_pub_time = time()
+            start_time = time()
+            for _ in range(6):
+                self.recv_training_data()
+            del self.exp[:]
+            while time() - start_time < self.init_time:
+                self.recv_training_data()
+                perf = self.train(index, fake=True)
+                if perf is not None:
+                    self.eval_queue.push(perf)
+                # if not improving or too low entropy, drop training
+                current = time()
+                if current - last_pub_time > 5:
+                    self.pub_params(index)
+                    last_pub_time = current
+
+            # use recent training eval for selection
+            self.offspring_pool[index].performance = self.eval_queue()
+
+            self.eval_queue.reset()
+
+
+    def train(self, index, fake=False):
         if len(self.exp) >= self.BATCH_SIZE:
             # Get experience from the queue
             trajectory = pd.DataFrame(self.exp[:self.BATCH_SIZE]).values
@@ -152,21 +182,22 @@ class Hub(Default, Logger):
             #performance = np.sum(np.mean(wins, axis=0))
 
             # Train
-            with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
-                self.offspring_pool[index].mean_entropy = \
-                    self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectory,
-                                                                       self.behavior_embeddings[:self.pop_size],
-                                                                       self.policy_kernel, self.similarity_l,
-                                                                       self.top_k,
-                                                                       self.offspring_pool[index].genotype['learning'],
-                                                                       states, actions, rews, probs, hidden_states, 0)
-            self.train_cntr += 1
-            tf.summary.experimental.set_step(self.train_cntr)
+            if not fake:
+                with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
+                    self.offspring_pool[index].mean_entropy = \
+                        self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectory,
+                                                                           self.behavior_embeddings[:self.pop_size],
+                                                                           self.policy_kernel, self.similarity_l,
+                                                                           self.top_k,
+                                                                           self.offspring_pool[index].genotype['learning'],
+                                                                           states, actions, rews, probs, hidden_states, 0)
+                self.train_cntr += 1
+                tf.summary.experimental.set_step(self.train_cntr)
 
-            print('train ! R=', self.eval_queue(), ', trend=', self.eval_queue.trend_count,
-                  ', H=', self.offspring_pool[index].mean_entropy, ', alpha=', self.offspring_pool[index].genotype['learning']['entropy_cost'])
+                print('train ! R=', self.eval_queue(), ', trend=', self.eval_queue.trend_count,
+                      ', H=', self.offspring_pool[index].mean_entropy, ', alpha=', self.offspring_pool[index].genotype['learning']['entropy_cost'])
 
-            self.sample_states(states)
+                self.sample_states(states)
 
             return performance
 
