@@ -157,7 +157,7 @@ class Hub(Default, Logger):
                     self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectory,
                                                                        self.behavior_embeddings[:self.pop_size],
                                                                        self.policy_kernel, self.similarity_l,
-                                                                       self.pop_size,
+                                                                       self.top_k,
                                                                        self.offspring_pool[index].genotype['learning'],
                                                                        states, actions, rews, probs, hidden_states, 0)
             self.train_cntr += 1
