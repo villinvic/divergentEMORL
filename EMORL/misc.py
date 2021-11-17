@@ -24,9 +24,14 @@ def bc_coef(a, b):
 def bc_distance(a, b):
     return np.mean(-np.log(bc_coef(a, b)+1e-8))
 
-def policy_similarity(a, b, l=1, func=bc_distance):
-    return np.exp(-func(a, b)**2/(2 * l ** 2))
+def norm(a, b):
+    return np.linalg.norm(a-b)
 
+def normalize(x, clip=2):
+    return np.clip((x - np.mean(x, axis=0))/(np.std(x, axis=0)+1e-8),-clip, clip)
+
+def policy_similarity(a, b, l=1, func=norm):
+    return np.exp(-func(a, b)**2/(2 * l ** 2))
 
 def nn_crossover(a, b, architecture={}):
     pairs = [pairwise_cross_corr(ax, bx) for ax,bx in zip(a,b)]

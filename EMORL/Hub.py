@@ -8,7 +8,7 @@ import fire
 import os
 
 from EMORL.Population import Population
-from EMORL.misc import policy_similarity, MovingAverage
+from EMORL.misc import policy_similarity, normalize, MovingAverage
 from EMORL.MOO import ND_sort
 from EMORL.plotting import plot_perf_uniq
 from Gym.Boxing import Boxing
@@ -45,6 +45,7 @@ class Hub(Default, Logger):
         # Init pop
 
         self.offspring_pool.initialize(trainable=True, batch_dim=(self.BATCH_SIZE, self.TRAJECTORY_LENGTH))
+        self.similarity_l = dummy_env.action_dim
 
         # tajectories used to compute behavior distance
         self.sampled_trajectory = np.zeros((1, self.TRAJECTORY_LENGTH, dummy_env.state_dim), dtype=np.float32)
@@ -76,8 +77,8 @@ class Hub(Default, Logger):
         self.writer.set_as_default()
 
 
-        self.top_k_index = np.arange(self.top_k)
-        self.policy_kernel = np.empty((self.top_k, self.top_k), dtype=np.float32)
+        #self.top_k_index = np.arange(self.top_k)
+        self.policy_kernel = np.empty((self.pop_size, self.pop_size), dtype=np.float32)
         self.policy_kernel_p1 = np.empty((self.pop_size+self.n_offspring, self.pop_size+self.n_offspring), dtype=np.float32)
         self.init_sampled_trajectories(dummy_env)
 
@@ -126,19 +127,20 @@ class Hub(Default, Logger):
     def compute_diversity(self):
         for index, individual in enumerate(self.population):
                 self.behavior_embeddings[index, :, :, :] = individual.probabilities_for(self.sampled_trajectory[:, :-1])
+        self.behavior_embeddings[:self.pop_size] = normalize(self.behavior_embeddings[:self.pop_size])
 
-        for i, index_i in enumerate(self.top_k_index):
-            for j, index_j in enumerate(self.top_k_index):
+        for i in range(self.pop_size):
+            for j in range(self.pop_size):
                 if i==j:
                     self.policy_kernel[i, j] = 1.
                 elif j > i:
-                    self.policy_kernel[i, j] = policy_similarity(self.behavior_embeddings[index_i],
-                                                                 self.behavior_embeddings[index_j],
+                    self.policy_kernel[i, j] = policy_similarity(self.behavior_embeddings[i],
+                                                                 self.behavior_embeddings[j],
                                                                  l=self.similarity_l)
                 else:
                     self.policy_kernel[i, j] = self.policy_kernel[j, i]
 
-        _, div = np.linalg.slogdet(self.policy_kernel)
+        div = np.linalg.det(self.policy_kernel)
         print(self.policy_kernel)
         self.population.diversity = div
         return div
@@ -205,7 +207,7 @@ class Hub(Default, Logger):
                     self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectory,
                                                                        self.behavior_embeddings[:self.pop_size],
                                                                        self.policy_kernel, self.similarity_l,
-                                                                       self.top_k,
+                                                                       self.pop_size,
                                                                        self.offspring_pool[index].genotype['learning'],
                                                                        states, actions, rews, probs, hidden_states, 0)
             self.train_cntr += 1
@@ -252,7 +254,7 @@ class Hub(Default, Logger):
 
     def make_offspring(self):
         # select p pairs of individuals, operate crossover with low prob, mutation
-        parents_pairs = np.random.choice(self.pop_size, (self.n_offspring, 2, self.top_k), replace=True)
+        parents_pairs = np.random.choice(self.pop_size, (self.n_offspring, 2, 1), replace=True)
         best_parents_pairs = np.empty((self.n_offspring, 2), dtype=np.int32)
         for i, (p1, p2) in enumerate(parents_pairs):
             best_parents_pairs[i, :] = sorted(p1, key= lambda index: self.population[index].performance)[-1] , \
@@ -318,6 +320,7 @@ class Hub(Default, Logger):
                 else:
                     self.behavior_embeddings[index, :] = individual.probabilities_for(self.sampled_trajectory[:, :-1])
                 index += 1
+        self.behavior_embeddings[:] = normalize(self.behavior_embeddings)
 
         """for individual_index in range(self.pop_size+self.n_offspring):
             distance = 0.
@@ -377,13 +380,36 @@ class Hub(Default, Logger):
 
         print(self.perf_and_uniqueness[:, selected, 0])
 
-        self.top_k_index = np.argsort(selected)[:self.top_k]
+        ##########
+        # if self.pop_size in selected:
+        #     self.update_top_k()
+        ##########
 
         for new_index, individual_index in enumerate(sorted(selected)):
             if individual_index < self.pop_size:
                 self.population[new_index].inerit_from(self.population[individual_index])
             else:
                 self.population[new_index].inerit_from(self.offspring_pool[individual_index-self.pop_size])
+
+    def update_top_k(self):
+        scores = np.empty((self.top_k,), dtype=np.float32)
+        tmp_kernel = np.empty((self.top_k+1, self.top_k+1), dtype=np.float32)
+        tmp_kernel[:-1, :-1] = self.policy_kernel
+
+        for i, index_i in enumerate(self.top_k_index):
+                tmp_kernel[self.top_k, i] = policy_similarity(self.behavior_embeddings[self.pop_size],
+                                                                 self.behavior_embeddings[index_i],
+                                                                 l=self.similarity_l)
+                tmp_kernel[i, self.top_k] = tmp_kernel[self.top_k, i]
+
+        for current_candidate in range(self.top_k):
+            scores[current_candidate] = np.linalg.det(np.delete(np.delete(tmp_kernel, current_candidate,axis=0),
+                                                                current_candidate, axis=1))
+
+        best = np.max(scores)
+        ### TODO ?
+
+
 
     def compute_novelty(self, indexes):
         for individual_index in indexes:
