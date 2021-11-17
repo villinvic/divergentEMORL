@@ -418,7 +418,7 @@ class AC(tf.keras.Model, Default):
 
                 behavior_embedding, _ = tf.linalg.normalize(self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1]))
                 new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
-                div = tf.linalg.slogdet(new_K + tf.eye(size+1) * 10e-8)
+                div = tf.linalg.det(new_K + tf.eye(size+1) * 10e-8)
 
                 #behavior_distance = self.compute_distance_score(behavior_embedding, phi, l) + 1e-8
 
