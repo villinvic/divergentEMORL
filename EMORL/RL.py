@@ -422,7 +422,7 @@ class AC(tf.keras.Model, Default):
 
                 #behavior_distance = self.compute_distance_score(behavior_embedding, phi, l) + 1e-8
 
-                total_loss = 0.5 * v_loss + p_loss - lamb * tf.math.log(div)
+                total_loss = 0.*(0.5 * v_loss + p_loss) - lamb * tf.math.log(div)
 
             grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
                                  + self.V.trainable_variables + self.dense_1.trainable_variables)
