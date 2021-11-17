@@ -45,7 +45,6 @@ class Hub(Default, Logger):
         # Init pop
 
         self.offspring_pool.initialize(trainable=True, batch_dim=(self.BATCH_SIZE, self.TRAJECTORY_LENGTH))
-        self.similarity_l = dummy_env.action_dim
 
         # tajectories used to compute behavior distance
         self.sampled_trajectory = np.zeros((1, self.TRAJECTORY_LENGTH, dummy_env.state_dim), dtype=np.float32)
