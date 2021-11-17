@@ -350,7 +350,7 @@ class Hub(Default, Logger):
         index = 0
         for i, pop in enumerate([self.population, self.offspring_pool]):
             for individual in pop:
-                if i==1 and individual.performance < np.min(self.perf_and_uniqueness[0,self.pop_size:,0]):
+                if i==1 and individual.performance < np.min(self.perf_and_uniqueness[0,:self.pop_size,0]):
                     self.perf_and_uniqueness[:, index, 0] = -np.inf
                 else:
                     self.perf_and_uniqueness[0, index, 0] = individual.performance
