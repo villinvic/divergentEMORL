@@ -123,8 +123,8 @@ def plot_stats(population, path):
     plot = plots[row][col]
 
 
-    plot.plot(np.arange(len(population.stats['diversity'])), np.log(population.stats['diversity']), label='Mean')
-    plot.set_ylabel('Log(Diversity)')
+    plot.plot(np.arange(len(population.stats['diversity'])), population.stats['diversity'], label='Mean')
+    plot.set_ylabel('Diversity')
     plot.set_xlabel('Iterations')
 
     print('ok')
