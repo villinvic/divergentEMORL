@@ -447,7 +447,6 @@ class AC(tf.keras.Model, Default):
 
     def compute_kernel(self, new_behavior_embedding, behavior_embeddings, existing_K, l, size, parent_index):
         tf.print(behavior_embeddings.shape)
-        exit()
 
         def similarity_vec(cursor):
             return self.compute_similarity_norm(new_behavior_embedding, behavior_embeddings[cursor], l)
