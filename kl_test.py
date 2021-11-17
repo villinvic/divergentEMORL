@@ -3,7 +3,7 @@ import numpy as np
 
 np.set_printoptions(precision=4, suppress=True)
 
-full_dim = (1, 79, 8)
+full_dim = (1, 79, 10)
 amount = 1
 for d in full_dim[:-1]:
     amount *= d
@@ -13,7 +13,7 @@ for d in full_dim[:-1]:
 policies = np.zeros( (10,)+full_dim, dtype=np.float64)
 x = np.random.random(full_dim)
 for i in range(10):
-    policies[i, :] = x + i
+    policies[i, :] = 1/10. + np.random.random(full_dim) * 0.1
     policies[i, :] /= np.sum(policies[i, :], axis=1)[:,np.newaxis]
 
 K = np.zeros((10,10), dtype=np.float32)
@@ -29,7 +29,7 @@ for i in range(10):
         if i==j:
             K[i, j] = 1.
         elif j>i:
-            K[i, j] = policy_similarity(policies[i], policies[j], l=8)
+            K[i, j] = policy_similarity(policies[i], policies[j], l=20)
         else:
             K[i, j] = K[j, i] #policy_similarity(policies[i], policies[j], l=1)
         kl[i, j] = 1 - K[i, j]
