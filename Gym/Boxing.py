@@ -41,7 +41,6 @@ class Boxing:
         self.action_dim = 10
         self.state_dim_base = len(self.indexes)
         self.state_dim_actions = len(self.indexes) + self.action_dim
-        print(self.action_dim, self.env.observation_space.shape)
         self.framestack = framestack
         self.frameskip = frameskip
         self.do_render = render
@@ -111,3 +110,18 @@ class Boxing:
     def render(self):
         time.sleep(0.04)
         self.env.render()
+
+
+    def compute_stats(self, states, final_states, scores):
+        stats = dict()
+        stats['win_rate'] = scores[0] / np.float32(np.sum(scores))
+
+        actions = np.sum(states[:, self.state_dim_base:self.state_dim_actions], axis=0)
+        stats['action_avg_prob'] = actions / np.sum(actions)
+        stats['distance'] = np.mean(np.sqrt((states[:, 0] - states[:, 2])**2 + (states[:, 1] - states[:, 3])**2))
+        stats['avg_timer'] = np.mean(states[final_states, 14])
+        stats['avg_punches'] = np.mean(states[final_states, 4])
+        stats['avg_hurt'] = np.mean(states[final_states, 5])
+        stats['mobility'] = np.mean(np.sqrt((states[1:, 0] - states[:-1, 0])**2 + (states[1:, 1] - states[:-1, 1])**2))
+
+        return stats

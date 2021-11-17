@@ -18,7 +18,6 @@ class Individual:
         self.generation = 0
 
 
-
     def get_arena_genes(self):
         return {
             'brain': self.genotype['brain'].get_params()

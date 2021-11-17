@@ -70,8 +70,7 @@ class TennisRewards:
 class BoxingRewards:
 
     base = {
-        'distance_away': 0.05,
-        'distance_toward': 0.05,
+        'movement': 0.05,
         'hit': 0.05,
         'hurt': 0.05,
         'win': 1.,
@@ -105,9 +104,7 @@ class BoxingRewards:
 
     def compute(self, states, reward_shape, base_rewards):
 
-        self['distance_toward'][:] = np.clip(np.sqrt((states[:, :-1, 0]-states[:, :-1, 2])**2+(states[:, :-1, 1]-states[:, :-1, 2])**2) - \
-                           np.sqrt((states[:, 1:, 0]-states[:, 1:, 2])**2+(states[:, 1:, 1]-states[:, 1:, 2])**2), -1.5, 1.5)
-        self['distance_away'][:] = -self['distance_toward']
+        self['movement'][:] = np.clip(np.sqrt((states[:, :-1, 0]-states[:, 1:, 0])**2+(states[:, :-1, 1]-states[:, 1:, 1])**2), -1.5, 1.5)
 
         self['hit'][:] = np.clip( states[:, 1:, 4]- states[:, :-1, 4], 0., np.inf)
         self['hurt'][:] = -np.clip(states[:, 1:, 5] - states[:, :-1, 5], 0, np.inf)

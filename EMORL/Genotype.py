@@ -43,6 +43,7 @@ class Genotype(Default):
             del self.brain_model
 
             Brain_cls = AC if trainable else Policy
+
             self._genes = {
                 'brain': Brain_cls(output_dim, self.layer_dims, self.lstm_dim), # brain function (must have a __call__ and perturb function) Usually an NN
                 'learning': LearningParams(),
