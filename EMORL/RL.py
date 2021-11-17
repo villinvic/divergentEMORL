@@ -416,7 +416,7 @@ class AC(tf.keras.Model, Default):
                                           * tf.stop_gradient(targets[:, 1:] * gamma + rewards - v_all[:, :-1])
                                           + alpha * ent)
 
-                behavior_embedding = tf.linalg.normalize(self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1]))
+                behavior_embedding, _ = tf.linalg.normalize(self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1]))
                 new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
                 div = tf.linalg.slogdet(new_K + tf.eye(size+1) * 10e-8)
 
@@ -448,8 +448,6 @@ class AC(tf.keras.Model, Default):
     def compute_kernel(self, new_behavior_embedding, behavior_embeddings, existing_K, l, size, parent_index):
 
         def similarity_vec(cursor):
-            print(new_behavior_embedding.shape, behavior_embeddings[cursor])
-            exit()
             return self.compute_similarity_norm(new_behavior_embedding, behavior_embeddings[cursor], l)
 
         Kp1 = tf.map_fn(similarity_vec, elems=tf.range((size), dtype=tf.int32), fn_output_signature=tf.float32)
