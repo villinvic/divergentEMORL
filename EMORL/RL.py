@@ -447,8 +447,12 @@ class AC(tf.keras.Model, Default):
 
     def compute_kernel(self, new_behavior_embedding, behavior_embeddings, existing_K, l, size, parent_index):
 
+
+
         def similarity_vec(cursor):
-            return self.compute_similarity_norm(new_behavior_embedding, behavior_embeddings[cursor, 0], l)
+            print(new_behavior_embedding.shape, behavior_embeddings[cursor].shape)
+            exit()
+            return self.compute_similarity_norm(new_behavior_embedding, behavior_embeddings[cursor], l)
 
         Kp1 = tf.map_fn(similarity_vec, elems=tf.range((size), dtype=tf.int32), fn_output_signature=tf.float32)
 
@@ -460,9 +464,9 @@ class AC(tf.keras.Model, Default):
             elif i == size:
                 return Kp1[j]
             elif j == size:
-                return self.compute_similarity_norm(behavior_embeddings[i], new_behavior_embedding, l)
-            else:
                 return Kp1[i]
+            else:
+                return existing_K[i, j]
 
         K = tf.map_fn(similarity, elems=tf.range((size+1)**2, dtype=tf.int32), fn_output_signature=tf.float32)
 
