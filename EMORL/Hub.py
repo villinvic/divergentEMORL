@@ -348,13 +348,16 @@ class Hub(Default, Logger):
 
     def select(self):
         index = 0
-        for pop in [self.population, self.offspring_pool]:
+        for i, pop in enumerate([self.population, self.offspring_pool]):
             for individual in pop:
-                self.perf_and_uniqueness[0, index, 0] = individual.performance
+                if i==1 and individual.performance < np.min(self.perf_and_uniqueness[0,self.pop_size:,0]):
+                    self.perf_and_uniqueness[:, index, 0] = -np.inf
+                else:
+                    self.perf_and_uniqueness[0, index, 0] = individual.performance
                 index += 1
 
 
-        frontiers = ND_sort(self.perf_and_uniqueness)
+        frontiers = ND_sort(self.perf_and_uniqueness, epsilon=2.)
         selected = []
         frontier_index = 0
         while len(selected) < self.pop_size:
