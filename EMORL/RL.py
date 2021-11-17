@@ -450,7 +450,7 @@ class AC(tf.keras.Model, Default):
         def similarity_vec(cursor):
             return self.compute_similarity_norm(new_behavior_embedding, behavior_embeddings[cursor], l)
         Kp1 = tf.concat([tf.map_fn(similarity_vec, elems=tf.range((size), dtype=tf.int32), fn_output_signature=tf.float32), [1]], axis=0)
-        return tf.concat([tf.concat([existing_K, tf.expand_dims(Kp1[:-1], axis=1)], axis=0), tf.expand_dims(Kp1, axis=0)], axis=1)
+        return tf.concat([tf.concat([existing_K, tf.expand_dims(Kp1[:-1], axis=0)], axis=0), tf.expand_dims(Kp1, axis=1)], axis=1)
 
     def compute_distance_score(self, new_behavior_embedding, pop_embeddings, l):
         return 1.-self.compute_similarity_bc(tf.expand_dims(new_behavior_embedding, 0), pop_embeddings, l)
