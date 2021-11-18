@@ -18,7 +18,7 @@ from logger.Logger import Logger
 
 
 class Hub(Default, Logger):
-    def __init__(self, ip='127.0.0.1', ckpt=''):
+    def __init__(self, ip='127.0.0.1', ckpt='', skip_init=False):
         super(Hub, self).__init__()
 
         os.environ["CUDA_VISIBLE_DEVICES"] = '0'
@@ -55,6 +55,9 @@ class Hub(Default, Logger):
         self.traj_index = 0
         self.behavior_embeddings = np.zeros((self.top_k+self.n_offspring, 1,
                                               self.TRAJECTORY_LENGTH-1, dummy_env.action_dim), dtype=np.float32)
+        self.behavior_embeddings_n = np.zeros((self.top_k + self.n_offspring, 1,
+                                             self.TRAJECTORY_LENGTH - 1, dummy_env.action_dim), dtype=np.float32)
+
         #self.behavior_embeddings_elite = np.zeros((self.top_k, 1,
         #                                     self.TRAJECTORY_LENGTH - 1, dummy_env.action_dim), dtype=np.float32)
         self.perf_and_uniqueness = np.zeros((2, self.pop_size+self.n_offspring+self.top_k, 1), dtype=np.float32)
@@ -88,7 +91,7 @@ class Hub(Default, Logger):
 
         if ckpt:
             self.load(ckpt)
-        else:
+        elif not skip_init:
             self.init_eval()
 
 
@@ -130,16 +133,16 @@ class Hub(Default, Logger):
 
     def compute_diversity(self):
         for index, e in enumerate(self.elites):
-                self.behavior_embeddings[index, :, :, :] = e.probabilities_for(self.sampled_trajectory[:, :-1])
-        self.behavior_embeddings[:-1] = normalize(self.behavior_embeddings[:-1])
+                self.behavior_embeddings[self.n_offspring+index, :, :, :] = e.probabilities_for(self.sampled_trajectory[:, :-1])
+        self.behavior_embeddings_n[self.n_offspring:] = normalize(self.behavior_embeddings[self.n_offspring:])
 
         for i in range(self.top_k):
             for j in range(self.top_k):
                 if i==j:
                     self.policy_kernel[i, j] = 1.
                 elif j > i:
-                    self.policy_kernel[i, j] = policy_similarity(self.behavior_embeddings[i],
-                                                                 self.behavior_embeddings[j],
+                    self.policy_kernel[i, j] = policy_similarity(self.behavior_embeddings_n[self.n_offspring+i],
+                                                                 self.behavior_embeddings_n[self.n_offspring+j],
                                                                  l=self.similarity_l)
                 else:
                     self.policy_kernel[i, j] = self.policy_kernel[j, i]
@@ -209,7 +212,7 @@ class Hub(Default, Logger):
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
                 self.offspring_pool[index].mean_entropy = \
                     self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectory,
-                                                                       self.behavior_embeddings,
+                                                                       self.behavior_embeddings[1:],
                                                                        self.policy_kernel, self.similarity_l,
                                                                        self.top_k,
                                                                        self.offspring_pool[index].genotype['learning'],
@@ -327,8 +330,9 @@ class Hub(Default, Logger):
         for pop in [self.offspring_pool, self.elites]:
             for individual in pop:
                 self.behavior_embeddings[index, :, :, :] = individual.probabilities_for(self.sampled_trajectory[:, :-1])
+                index += 1
 
-        self.behavior_embeddings[:] = normalize(self.behavior_embeddings)
+        #self.behavior_embeddings_n[:] = normalize(self.behavior_embeddings[:])
 
         """for individual_index in range(self.pop_size+self.n_offspring):
             distance = 0.
@@ -342,22 +346,21 @@ class Hub(Default, Logger):
             self.perf_and_uniqueness[1, individual_index] = distance"""
 
     def compute_div_scores(self):
-        for i in range(self.top_k+self.n_offspring):
-            for j in range(self.top_k+self.n_offspring):
-                if i==j:
-                    self.policy_kernel_p1[i, j] = 1.
-                elif j>i:
-                    self.policy_kernel_p1[i, j] = policy_similarity(self.behavior_embeddings[i], self.behavior_embeddings[j],
-                                                                 l=self.similarity_l)
-                else:
-                    self.policy_kernel_p1[i,j] = self.policy_kernel_p1[j,i]
+        self.offspring_pool[0].div_score = 1-self.population.diversity
 
-        for index in range(self.top_k+self.n_offspring):
-            div = np.linalg.det(np.delete(np.delete(self.policy_kernel_p1, index, axis=0), index, axis=1))
-            if index < self.n_offspring:
-                self.offspring_pool[index].div_score = 1-div
-            else:
-                self.elites[index-self.n_offspring].div_score = 1-div
+        for index in range(self.top_k):
+            tmp = normalize(np.delete(self.behavior_embeddings, 1+index, axis=0))
+            for i in range(self.top_k+self.n_offspring-1):
+                for j in range(self.top_k+self.n_offspring-1):
+                    if i == j:
+                        self.policy_kernel[i, j] = 1.
+                    elif j > i:
+                        self.policy_kernel[i, j] = policy_similarity(tmp[i], tmp[j],
+                                                                     l=self.similarity_l)
+                    else:
+                        self.policy_kernel[i,j] = self.policy_kernel[j,i]
+            div = np.linalg.det(self.policy_kernel)
+            self.elites[index].div_score = 1-div
             # self.perf_and_uniqueness[1, index, 0] = 1 - np.mean(self.policy_kernel_p1[:, index])
 
     def select(self):

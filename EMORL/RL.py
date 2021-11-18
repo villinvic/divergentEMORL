@@ -416,9 +416,16 @@ class AC(tf.keras.Model, Default):
                                           * tf.stop_gradient(targets[:, 1:] * gamma + rewards - v_all[:, :-1])
                                           + alpha * ent)
 
+
                 behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
-                normalized = tf.clip_by_value((behavior_embedding - tf.reduce_mean(behavior_embedding)) / (tf.math.reduce_std(behavior_embedding)+1e-8), -2., 2.)
-                #tf.print(normalized)
+
+                all_embed = tf.concat([phi, tf.expand_dims(behavior_embedding, axis=0)], axis=0)
+                mean = tf.reduce_mean(all_embed, axis=0)
+                std = tf.math.reduce_std(all_embed, axis=0)+1e-8
+
+                phi = tf.clip_by_value((phi - mean) / std, -2., 2.)
+                normalized = tf.clip_by_value((behavior_embedding - mean) / std, -2., 2.)
+
                 new_K = self.compute_kernel(normalized, phi, K, l, size, parent_index)
                 # tf.print(new_K)
                 div = tf.linalg.det(new_K)
