@@ -32,7 +32,6 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, elites, path):
 
     for c in cases:
         if c != 'elites':
-            print(c, cases[c])
             cases[c] = [perf_and_uniqueness[1, list(cases[c])], perf_and_uniqueness[0, list(cases[c])]]
 
     for i, e in enumerate(elites):
