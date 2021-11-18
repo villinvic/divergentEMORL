@@ -513,7 +513,7 @@ class Hub(Default, Logger):
                 if d == 'elites':
                     _, _, ffiles = next(os.walk(ckpt_path + oldest + '/' + d))
                     for f in ffiles:
-                        if '.pkl' in f:
+                        if '.pkl' in f or '.params' in f:
                             os.remove(ckpt_path + oldest + '/' + d + '/' + f)
                     os.rmdir(ckpt_path + oldest + '/' + d)
             try:
