@@ -344,9 +344,9 @@ class Hub(Default, Logger):
                     self.policy_kernel_p1[i,j] = self.policy_kernel_p1[j,i]
 
         for index in range(self.pop_size+self.n_offspring):
-        #    _, logdiv = np.linalg.slogdet(np.delete(np.delete(self.policy_kernel_p1, index, axis=0), index, axis=1))
-        #    self.perf_and_uniqueness[1, index, 0] = -logdiv
-            self.perf_and_uniqueness[1, index, 0] = 1 - np.mean(self.policy_kernel_p1[:, index])
+            div = np.linalg.det(np.delete(np.delete(self.policy_kernel_p1, index, axis=0), index, axis=1))
+            self.perf_and_uniqueness[1, index, 0] = 1-div
+            # self.perf_and_uniqueness[1, index, 0] = 1 - np.mean(self.policy_kernel_p1[:, index])
 
     def select(self):
         index = 0
