@@ -324,7 +324,7 @@ class Hub(Default, Logger):
                     self.behavior_embeddings[index, :] = individual.probabilities_for(self.sampled_trajectory[:, :-1])
                 index += 1
         self.behavior_embeddings[:] = normalize(self.behavior_embeddings)"""
-        for pop in [self.elites, self.offspring_pool]:
+        for pop in [self.offspring_pool, self.elites]:
             for individual in pop:
                 self.behavior_embeddings[index, :, :, :] = individual.probabilities_for(self.sampled_trajectory[:, :-1])
 
@@ -355,10 +355,10 @@ class Hub(Default, Logger):
         for index in range(self.top_k+self.n_offspring):
             div = np.linalg.det(np.delete(np.delete(self.policy_kernel_p1, index, axis=0), index, axis=1))
             self.perf_and_uniqueness[1, self.pop_size+index, 0] = 1 - div
-            if index < self.top_k:
-                self.elites[index].div_score = 1-div
+            if index < self.n_offspring:
+                self.offspring_pool[index].div_score = 1-div
             else:
-                self.offspring_pool[index-self.top_k].div_score = 1-div
+                self.elites[index-self.n_offspring].div_score = 1-div
             # self.perf_and_uniqueness[1, index, 0] = 1 - np.mean(self.policy_kernel_p1[:, index])
 
     def select(self):
