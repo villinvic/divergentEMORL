@@ -417,11 +417,9 @@ class AC(tf.keras.Model, Default):
                                           + alpha * ent)
 
                 behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
-                normalized = behavior_embedding -
-                tf.print(behavior_embedding)
-
-                behavior_embedding = tf.clip_by_value( behavior_embedding, -2., 2.)
-                new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
+                normalized = tf.clip_by_value((behavior_embedding - tf.reduce_mean(behavior_embedding)) / (tf.math.reduce_std(behavior_embedding)+1e-8), -2., 2.)
+                tf.print(normalized)
+                new_K = self.compute_kernel(normalized, phi, K, l, size, parent_index)
                 # tf.print(new_K)
                 div = tf.linalg.det(new_K)
 
