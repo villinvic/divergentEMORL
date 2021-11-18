@@ -30,7 +30,7 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, elites, path):
         else:
             cases['new discarded'].add(x)
 
-    for c in reversed(cases):
+    for c in cases:
         if c != 'elites':
             cases[c] = (perf_and_uniqueness[1, list(cases[c])], perf_and_uniqueness[0, list(cases[c])])
 
@@ -41,7 +41,7 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, elites, path):
     plt.style.use(['science', 'scatter', 'grid'])
 
     print(selected)
-    for case, (div, perf) in cases.items():
+    for case, (div, perf) in reversed(cases.items()):
         plt.scatter(div, perf, label=case, marker='v')
 
 
