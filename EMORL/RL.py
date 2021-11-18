@@ -417,9 +417,10 @@ class AC(tf.keras.Model, Default):
                                           + alpha * ent)
 
                 behavior_embedding, _ = tf.linalg.normalize(self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1]))
+                tf.print(behavior_embedding)
                 behavior_embedding = tf.clip_by_value( behavior_embedding, -2., 2.)
                 new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
-                tf.print(new_K)
+                # tf.print(new_K)
                 div = tf.linalg.det(new_K)
 
                 #behavior_distance = self.compute_distance_score(behavior_embedding, phi, l) + 1e-8
