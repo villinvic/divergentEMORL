@@ -171,24 +171,40 @@ if __name__ == '__main__':
         tf.config.experimental.set_memory_growth(gpu, True)
     tf.summary.experimental.set_step(0)
 
-    s = np.random.random((256, 80, 100))
-    a = Individual(0, 100, 32, [], trainable=True)
+    s = np.random.random((1, 80, 100))
+    for i in range(80):
+        s[0, i] += s[0,0] + np.random.random(100) * 0.01
+    a = Individual(0, 100, 10, [], trainable=True)
     a_w = a.genotype['brain'].get_training_params()
-    a_w['actor_core'][0][0][::15] += np.random.random(a_w['actor_core'][0][0][::15].shape)*0.9
-    a_w['actor_core'][0][1][::3] -= np.random.random(a_w['actor_core'][0][1][::3].shape) *0.6
+    a_w['actor_core'][0][0][::15] += np.random.random(a_w['actor_core'][0][0][::15].shape)*0.5
+    #a_w['actor_core'][0][1][::3] -= np.random.random(a_w['actor_core'][0][1][::3].shape) *0.6
     a.genotype['brain'].set_training_params(a_w)
-    b = Individual(0, 100, 32, [], trainable=True)
-    c = Individual(0, 100, 32, [], trainable=True)
+    b = Individual(0,  100, 10, [], trainable=True)
+    c = Individual(0, 100, 10, [], trainable=True)
+    d = Individual(0, 100, 10, [], trainable=True)
+    e = Individual(0, 100, 10, [], trainable=True)
+    c.inerit_from(a, e)
+    pop = [a,b,c,d,e]
+    embeddings = np.empty((len(pop), 80, 10))
+    for i, ind in enumerate(pop):
+        embeddings[i,: ]= ind.genotype['brain'].policy.get_probs(a.genotype['brain'].dense_1(a.genotype['brain'].lstm(s)))
 
-    c.inerit_from(a, b)
-    a_out = a.genotype['brain'].policy.get_probs(a.genotype['brain'].dense_1(a.genotype['brain'].lstm(s)))
-    b_out = b.genotype['brain'].policy.get_probs(b.genotype['brain'].dense_1(b.genotype['brain'].lstm(s)))
-    c_out = c.genotype['brain'].policy.get_probs(c.genotype['brain'].dense_1(c.genotype['brain'].lstm(s)))
+    embeddings[:] = normalize(embeddings)
 
-    for i, one in enumerate([a_out, b_out, c_out]):
-        for j, two in enumerate([a_out, b_out, c_out]):
+
+    for i, one in enumerate(embeddings):
+        for j, two in enumerate(embeddings):
             if i != j and i < j:
-                print((i, j), policy_similarity(one, two, 3, func=kl_divergence), policy_similarity(one, two, l=3, func=bc_distance))
+                print((i, j), policy_similarity(one, two, 30))
+
+    k = np.empty((len(pop),len(pop)), dtype=np.float32)
+    for i in range(len(pop)):
+        for j in range(len(pop)):
+            k[i, j] = policy_similarity(embeddings[i], embeddings[j], 30)
+
+    print(np.linalg.det(k))
+    for i in range(len(pop)):
+        print(i, 1-np.linalg.det(np.delete(np.delete(k, i, axis=0), i , axis=1)))
 
 
 
