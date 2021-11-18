@@ -15,6 +15,7 @@ class Individual:
         self.mean_entropy = np.inf
 
         self.performance = -np.inf
+        self.div_score = 0
         self.generation = 0
 
 
@@ -56,11 +57,13 @@ class Individual:
             self.mean_entropy = other_individuals[0].mean_entropy
             self.performance = other_individuals[0].performance
             self.generation = other_individuals[0].generation
+            self.div_score = other_individuals[0].div_score
         elif len(other_individuals) == 2:
             other_individuals[0].genotype.crossover(other_individuals[1].genotype, target_genotype=self.genotype)
             self.mean_entropy = (other_individuals[0].mean_entropy + other_individuals[1].mean_entropy) * 0.5
             self.performance = (other_individuals[0].performance + other_individuals[1].performance) * 0.5
             self.generation = other_individuals[0].mean_entropy
+            self.div_score = (other_individuals[0].div_score + other_individuals[1].div_score) * 0.5
 
 
     def probabilities_for(self, states):

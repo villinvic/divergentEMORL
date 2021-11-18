@@ -5,7 +5,7 @@ import sys
 import numpy as np
 
 
-def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, path):
+def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, elites, path):
     plt.clf()
 
     selected_set = set(selected)
@@ -16,7 +16,9 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, path):
     'old selected' : set(),
     'new discarded' : set(),
     'old discarded' : set(),
+    'elites'        : (np.empty((elites.size,), dtype=np.float32), np.empty((elites.size,), dtype=np.float32)),
     }
+
     for x in selected:
         if x < new_pop.size:
             cases['old selected'].add(x)
@@ -28,12 +30,18 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, path):
         else:
             cases['new discarded'].add(x)
 
+    for c in cases:
+        cases[c] = (perf_and_uniqueness[1, list(cases[c]), 0], perf_and_uniqueness[0, list(cases[c]), 0])
+
+    for i, e in enumerate(elites):
+        cases['elites'][0][i] = e.div_score
+        cases['elites'][1][i] = e.performance
+
     plt.style.use(['science', 'scatter', 'grid'])
 
     print(selected)
-    for case, indexes in cases.items():
-        print(case, indexes)
-        plt.scatter(perf_and_uniqueness[1, list(indexes)], perf_and_uniqueness[0, list(indexes)], label=case, marker='v')
+    for case, (div, perf) in cases.items():
+        plt.scatter(div, perf, label=case, marker='v')
 
 
     plt.ylabel(r'$\zeta_{perf}(\pi)$')
