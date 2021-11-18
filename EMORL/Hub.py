@@ -506,10 +506,13 @@ class Hub(Default, Logger):
 
         if len(dirs) > self.ckpt_keep:
             oldest = sorted(dirs, key=lambda dir: int(dir.split('ckpt_')[-1]))[0]
-            _, _, files = next(os.walk(ckpt_path + oldest))
+            _, dirs, files = next(os.walk(ckpt_path + oldest))
             for f in files:
                 if '.pkl' in f or '.params' in f or '.png' in f:
                     os.remove(ckpt_path + oldest + '/' + f)
+            for d in dirs:
+                if d ==  'elites':
+                    os.rmdir(ckpt_path + oldest + '/' + d)
             try:
                 os.rmdir(ckpt_path + oldest)
             except Exception:
