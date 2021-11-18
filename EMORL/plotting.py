@@ -30,7 +30,7 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, elites, path):
         else:
             cases['new discarded'].add(x)
 
-    for c in cases:
+    for c in reversed(cases):
         if c != 'elites':
             cases[c] = (perf_and_uniqueness[1, list(cases[c])], perf_and_uniqueness[0, list(cases[c])])
 
