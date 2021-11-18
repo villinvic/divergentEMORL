@@ -369,7 +369,7 @@ class Hub(Default, Logger):
                     self.perf_and_uniqueness[:, index, 0] = -np.inf
                 else:
                     self.perf_and_uniqueness[0, index, 0] = individual.performance
-                    if i==0:
+                    if i != 2:
                         self.perf_and_uniqueness[1, index, 0] = individual.div_score
                 index += 1
 

@@ -47,7 +47,11 @@ def ND_sort(scores, n_objectives=2, epsilon=0):
             for solution in frontiers[k]:
                 tmp = True
                 for objective_num in range(1, n_objectives):
-                    if is_dominated(scores[objective_num][index], scores[objective_num][solution], epsilon):
+                    if objective_num == 0:
+                        eps = epsilon
+                    else:
+                        eps = 0
+                    if is_dominated(scores[objective_num][index], scores[objective_num][solution], eps):
                         tmp = False
                         break
                 dominated = tmp
