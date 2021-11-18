@@ -82,7 +82,7 @@ class Hub(Default, Logger):
 
 
         #self.top_k_index = np.arange(self.top_k)
-        self.policy_kernel = np.empty((self.pop_size, self.pop_size), dtype=np.float32)
+        self.policy_kernel = np.empty((self.top_k, self.top_k), dtype=np.float32)
         self.policy_kernel_p1 = np.empty((self.pop_size+self.n_offspring, self.pop_size+self.n_offspring), dtype=np.float32)
         self.init_sampled_trajectories(dummy_env)
 
@@ -209,7 +209,7 @@ class Hub(Default, Logger):
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
                 self.offspring_pool[index].mean_entropy = \
                     self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectory,
-                                                                       self.behavior_embeddings_elite,
+                                                                       self.behavior_embeddings,
                                                                        self.policy_kernel, self.similarity_l,
                                                                        self.top_k,
                                                                        self.offspring_pool[index].genotype['learning'],
@@ -485,7 +485,7 @@ class Hub(Default, Logger):
         self.population.load(ckpt_path)
         self.elites.load(ckpt_path + 'elites/')
         path_dirs = ckpt_path.split('/')
-        for d in path_dirs:
+        for d in path_dirs:[]
             if 'EMORL' in d:
                 self.running_instance_id = d
 
