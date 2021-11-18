@@ -374,7 +374,7 @@ class Hub(Default, Logger):
                 index += 1
 
 
-        frontiers = ND_sort(self.perf_and_uniqueness[:-self.top_k], epsilon=2.)
+        frontiers = ND_sort(self.perf_and_uniqueness[:, :-self.top_k], epsilon=2.)
         selected = []
         frontier_index = 0
         while len(selected) < self.pop_size:
