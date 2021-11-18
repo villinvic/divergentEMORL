@@ -485,7 +485,7 @@ class Hub(Default, Logger):
         self.population.load(ckpt_path)
         self.elites.load(ckpt_path + 'elites/')
         path_dirs = ckpt_path.split('/')
-        for d in path_dirs:[]
+        for d in path_dirs:
             if 'EMORL' in d:
                 self.running_instance_id = d
 
