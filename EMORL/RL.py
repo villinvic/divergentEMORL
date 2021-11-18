@@ -416,13 +416,13 @@ class AC(tf.keras.Model, Default):
                                           * tf.stop_gradient(targets[:, 1:] * gamma + rewards - v_all[:, :-1])
                                           + alpha * ent)
 
-                behavior_embedding, _ = tf.linalg.normalize(self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1]))
+                behavior_embedding, _ = tf.clip_by_value(tf.linalg.normalize(self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])),-2.,2.)
                 new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
-                div = tf.linalg.det(new_K + tf.eye(size+1) * 10e-8)
+                div = tf.linalg.det(new_K)
 
                 #behavior_distance = self.compute_distance_score(behavior_embedding, phi, l) + 1e-8
 
-                total_loss = 0.5 * v_loss + p_loss - lamb * div
+                total_loss = 0.5 * v_loss + p_loss - lamb * tf.math.log(div)
 
             grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
                                  + self.V.trainable_variables + self.dense_1.trainable_variables)
