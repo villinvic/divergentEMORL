@@ -31,7 +31,7 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, elites, path):
             cases['new discarded'].add(x)
 
     for c in cases:
-        cases[c] = (perf_and_uniqueness[1, list(cases[c]), 0], perf_and_uniqueness[0, list(cases[c]), 0])
+        cases[c] = (perf_and_uniqueness[1, list(cases[c])], perf_and_uniqueness[0, list(cases[c])])
 
     for i, e in enumerate(elites):
         cases['elites'][0][i] = e.div_score
