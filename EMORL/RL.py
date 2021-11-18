@@ -419,6 +419,7 @@ class AC(tf.keras.Model, Default):
                 behavior_embedding, _ = tf.linalg.normalize(self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1]))
                 behavior_embedding = tf.clip_by_value( behavior_embedding, -2., 2.)
                 new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
+                tf.print(new_K)
                 div = tf.linalg.det(new_K)
 
                 #behavior_distance = self.compute_distance_score(behavior_embedding, phi, l) + 1e-8
@@ -451,6 +452,7 @@ class AC(tf.keras.Model, Default):
         def similarity_vec(cursor):
             return self.compute_similarity_norm(new_behavior_embedding, behavior_embeddings[cursor], l)
         Kp1 = tf.concat([tf.map_fn(similarity_vec, elems=tf.range((size), dtype=tf.int32), fn_output_signature=tf.float32), [1]], axis=0)
+
         return tf.concat([tf.concat([existing_K, tf.expand_dims(Kp1[:-1], axis=0)], axis=0), tf.expand_dims(Kp1, axis=1)], axis=1)
 
     def compute_distance_score(self, new_behavior_embedding, pop_embeddings, l):

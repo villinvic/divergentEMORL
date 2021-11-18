@@ -358,7 +358,7 @@ class Hub(Default, Logger):
             if index < self.top_k:
                 self.elites[index].div_score = 1-div
             else:
-                self.offspring_pool[index].div_score = 1-div
+                self.offspring_pool[index-self.top_k].div_score = 1-div
             # self.perf_and_uniqueness[1, index, 0] = 1 - np.mean(self.policy_kernel_p1[:, index])
 
     def select(self):
