@@ -207,7 +207,7 @@ class Hub(Default, Logger):
 
             # Train
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
-                print(normalize(self.offspring_pool[index].probabilities_for(self.sampled_trajectory[:, :-1])))
+                print(normalize(self.offspring_pool[index].probabilities_for(self.sampled_trajectory[:, :-1])[np.newaxis]))
                 self.offspring_pool[index].mean_entropy = \
                     self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectory,
                                                                        self.behavior_embeddings,
