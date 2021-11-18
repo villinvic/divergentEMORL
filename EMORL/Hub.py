@@ -354,7 +354,6 @@ class Hub(Default, Logger):
 
         for index in range(self.top_k+self.n_offspring):
             div = np.linalg.det(np.delete(np.delete(self.policy_kernel_p1, index, axis=0), index, axis=1))
-            self.perf_and_uniqueness[1, self.pop_size+index, 0] = 1 - div
             if index < self.n_offspring:
                 self.offspring_pool[index].div_score = 1-div
             else:
@@ -511,7 +510,11 @@ class Hub(Default, Logger):
                 if '.pkl' in f or '.params' in f or '.png' in f:
                     os.remove(ckpt_path + oldest + '/' + f)
             for d in dirs:
-                if d ==  'elites':
+                if d == 'elites':
+                    _, _, ffiles = next(os.walk(ckpt_path + oldest + '/' + d))
+                    for f in ffiles:
+                        if '.pkl' in f:
+                            os.remove(ckpt_path + oldest + '/' + d + '/' + f)
                     os.rmdir(ckpt_path + oldest + '/' + d)
             try:
                 os.rmdir(ckpt_path + oldest)
