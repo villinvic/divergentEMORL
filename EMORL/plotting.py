@@ -52,9 +52,9 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, elites, path):
     plt.legend()
     plt.draw()
 
-    if not os.path.exists(path):
+    if not os.path.exists(path+'elites/'):
         try:
-            os.makedirs(path)
+            os.makedirs(path+'elites/')
         except OSError as exc:
             print(exc)
     plt.savefig(path+'scatter.png')
