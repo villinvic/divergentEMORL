@@ -391,6 +391,7 @@ class Hub(Default, Logger):
         for s in selected:
             if s > self.pop_size:
                 if self.perf_and_uniqueness[1, s, 0] > np.min(self.perf_and_uniqueness[1, self.pop_size+self.n_offspring:, 0]):
+                    self.logger.info('New elite !')
                     self.elites[np.argmin(self.perf_and_uniqueness[1, self.pop_size+self.n_offspring:, 0])].inerit_from(self.offspring_pool[s-self.pop_size])
 
         # get stats of selection...

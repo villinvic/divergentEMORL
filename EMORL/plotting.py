@@ -16,7 +16,7 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, elites, path):
     'old selected' : set(),
     'new discarded' : set(),
     'old discarded' : set(),
-    'elites'        : (np.empty((elites.size,), dtype=np.float32), np.empty((elites.size,), dtype=np.float32)),
+    'elites'        : [np.empty((elites.size,), dtype=np.float32), np.empty((elites.size,), dtype=np.float32)],
     }
 
     for x in selected:
@@ -32,7 +32,7 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, elites, path):
 
     for c in cases:
         if c != 'elites':
-            cases[c] = (perf_and_uniqueness[1, list(cases[c])], perf_and_uniqueness[0, list(cases[c])])
+            cases[c] = [perf_and_uniqueness[1, list(cases[c])], perf_and_uniqueness[0, list(cases[c])]]
 
     for i, e in enumerate(elites):
         cases['elites'][0][i] = e.div_score
@@ -41,7 +41,8 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, elites, path):
     plt.style.use(['science', 'scatter', 'grid'])
 
     print(selected)
-    for case, (div, perf) in reversed(cases.items()):
+    for case, (div, perf) in cases.items():
+        print(case, div)
         plt.scatter(div, perf, label=case, marker='v')
 
 
