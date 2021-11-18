@@ -342,7 +342,7 @@ class Hub(Default, Logger):
             self.perf_and_uniqueness[1, individual_index] = distance"""
 
     def compute_div_scores(self):
-        for i in range(self.top):
+        for i in range(self.top_k):
             for j in range(self.top_k+self.n_offspring):
                 if i==j:
                     self.policy_kernel_p1[i, j] = 1.
