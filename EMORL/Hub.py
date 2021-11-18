@@ -389,7 +389,7 @@ class Hub(Default, Logger):
 
         # update elites regarding div
         for s in selected:
-            if s > self.pop_size:
+            if s >= self.pop_size:
                 print('===============', self.perf_and_uniqueness[1, s, 0],  self.perf_and_uniqueness[1, self.pop_size+self.n_offspring:, 0], '===============')
                 if self.perf_and_uniqueness[1, s, 0] > np.min(self.perf_and_uniqueness[1, self.pop_size+self.n_offspring:, 0]):
                     self.logger.info('New elite !')
