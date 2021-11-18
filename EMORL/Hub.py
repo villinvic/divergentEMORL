@@ -344,6 +344,7 @@ class Hub(Default, Logger):
     def compute_div_scores(self):
         for i in range(self.top_k+self.n_offspring):
             for j in range(self.top_k+self.n_offspring):
+            for j in range(self.top_k+self.n_offspring):
                 if i==j:
                     self.policy_kernel_p1[i, j] = 1.
                 elif j>i:
@@ -374,7 +375,7 @@ class Hub(Default, Logger):
                 index += 1
 
 
-        frontiers = ND_sort(self.perf_and_uniqueness, epsilon=2.)
+        frontiers = ND_sort(self.perf_and_uniqueness[:-self.top_k], epsilon=2.)
         selected = []
         frontier_index = 0
         while len(selected) < self.pop_size:
