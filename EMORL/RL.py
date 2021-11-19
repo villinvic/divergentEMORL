@@ -419,9 +419,9 @@ class AC(tf.keras.Model, Default):
 
                 behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
 
-                all_embed = tf.concat([phi, tf.expand_dims(behavior_embedding, axis=0)], axis=0)
-                mean = tf.reduce_mean(all_embed, axis=0)
-                std = tf.math.reduce_std(all_embed, axis=0)+1e-8
+                #all_embed = tf.concat([phi, tf.expand_dims(behavior_embedding, axis=0)], axis=0)
+                mean = tf.reduce_mean(phi, axis=0)
+                std = tf.math.reduce_std(phi, axis=0)+1e-8
 
                 phi = tf.clip_by_value((phi - mean) / std, -2., 2.)
                 normalized = tf.clip_by_value((behavior_embedding - mean) / std, -2., 2.)
