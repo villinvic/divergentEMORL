@@ -428,7 +428,7 @@ class AC(tf.keras.Model, Default):
 
                 new_K = self.compute_kernel(normalized, phi, K, l, size, parent_index)
                 # tf.print(new_K)
-                div = tf.linalg.det(new_K + tf.eye(size+1) * 1e-8)
+                div = tf.linalg.det(new_K + tf.eye(size+1) * 1e-4)
 
                 #behavior_distance = self.compute_distance_score(behavior_embedding, phi, l) + 1e-8
 
