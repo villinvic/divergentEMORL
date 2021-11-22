@@ -177,13 +177,26 @@ if __name__ == '__main__':
     a = Individual(0, 100, 10, [], trainable=True)
     a_w = a.genotype['brain'].get_training_params()
     a_w['actor_core'][0][0][::15] += np.random.random(a_w['actor_core'][0][0][::15].shape)*0.5
-    #a_w['actor_core'][0][1][::3] -= np.random.random(a_w['actor_core'][0][1][::3].shape) *0.6
+    a_w['actor_core'][0][1][::3] -= np.random.random(a_w['actor_core'][0][1][::3].shape) *0.6
     a.genotype['brain'].set_training_params(a_w)
     b = Individual(0,  100, 10, [], trainable=True)
+    b_w = b.genotype['brain'].get_training_params()
+    b_w['actor_core'][0][0][::10] += np.random.random(b_w['actor_core'][0][0][::10].shape)**2 * 0.1
+    b.genotype['brain'].set_training_params(b_w)
     c = Individual(0, 100, 10, [], trainable=True)
+    c_w = c.genotype['brain'].get_training_params()
+    c_w['actor_core'][0][0][::11] += -np.random.random(c_w['actor_core'][0][0][::11].shape) * 2
+    b.genotype['brain'].set_training_params(b_w)
     d = Individual(0, 100, 10, [], trainable=True)
+    d_w = b.genotype['brain'].get_training_params()
+    d_w['actor_core'][0][0][::18] += np.random.normal(0, 1, d_w['actor_core'][0][0][::18].shape) * 0.99
+    d_w['actor_core'][0][1][::2] -= np.random.normal(0,1, d_w['actor_core'][0][1][::2].shape) * 0.6
+    d.genotype['brain'].set_training_params(d_w)
     e = Individual(0, 100, 10, [], trainable=True)
-    c.inerit_from(a, e)
+    e_w = b.genotype['brain'].get_training_params()
+    e_w['actor_core'][0][0][::3] += -np.random.random(e_w['actor_core'][0][0][::3].shape) ** 3
+    e_w['actor_core'][0][1][::3] -= np.random.random(e_w['actor_core'][0][1][::3].shape) * 0.6
+    b.genotype['brain'].set_training_params(e_w)
     pop = [a,b,c,d,e]
     embeddings = np.empty((len(pop), 80, 10))
     for i, ind in enumerate(pop):

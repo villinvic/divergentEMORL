@@ -55,12 +55,13 @@ class Hub(Default, Logger):
         self.traj_index = 0
         self.behavior_embeddings = np.zeros((self.top_k+self.n_offspring, 1,
                                               self.TRAJECTORY_LENGTH-1, dummy_env.action_dim), dtype=np.float32)
-        self.behavior_embeddings_n = np.zeros((self.top_k + self.n_offspring, 1,
+        self.behavior_embeddings_pop = np.zeros((self.pop_size, 1,
                                              self.TRAJECTORY_LENGTH - 1, dummy_env.action_dim), dtype=np.float32)
 
         #self.behavior_embeddings_elite = np.zeros((self.top_k, 1,
         #                                     self.TRAJECTORY_LENGTH - 1, dummy_env.action_dim), dtype=np.float32)
         self.perf_and_uniqueness = np.zeros((2, self.pop_size+self.n_offspring+self.top_k, 1), dtype=np.float32)
+        self.div_scores = np.zeros((self.n_offspring+self.top_k), dtype=np.float32)
 
         self.eval_queue = MovingAverage(self.moving_avg_size)
 
@@ -134,15 +135,15 @@ class Hub(Default, Logger):
     def compute_diversity(self):
         for index, e in enumerate(self.elites):
                 self.behavior_embeddings[self.n_offspring+index, :, :, :] = e.probabilities_for(self.sampled_trajectory[:, :-1])
-        self.behavior_embeddings_n[self.n_offspring:] = normalize(self.behavior_embeddings[self.n_offspring:])
+        tmp = normalize(self.behavior_embeddings[self.n_offspring:])
 
         for i in range(self.top_k):
             for j in range(self.top_k):
                 if i==j:
                     self.policy_kernel[i, j] = 1.
                 elif j > i:
-                    self.policy_kernel[i, j] = policy_similarity(self.behavior_embeddings_n[self.n_offspring+i],
-                                                                 self.behavior_embeddings_n[self.n_offspring+j],
+                    self.policy_kernel[i, j] = policy_similarity(tmp[i],
+                                                                 tmp[j],
                                                                  l=self.similarity_l)
                 else:
                     self.policy_kernel[i, j] = self.policy_kernel[j, i]
@@ -210,9 +211,10 @@ class Hub(Default, Logger):
 
             # Train
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
+                #excluded = np.random.choice(self.top_k)
                 self.offspring_pool[index].mean_entropy = \
                     self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectory,
-                                                                       self.behavior_embeddings[1:],
+                                                                       self.behavior_embeddings[self.n_offspring:],
                                                                        self.policy_kernel, self.similarity_l,
                                                                        self.top_k,
                                                                        self.offspring_pool[index].genotype['learning'],
@@ -331,6 +333,8 @@ class Hub(Default, Logger):
             for individual in pop:
                 self.behavior_embeddings[index, :, :, :] = individual.probabilities_for(self.sampled_trajectory[:, :-1])
                 index += 1
+        for i, individual in enumerate(self.population):
+            self.behavior_embeddings_pop[i, :, :, :] = individual.probabilities_for(self.sampled_trajectory[:, :-1])
 
         #self.behavior_embeddings_n[:] = normalize(self.behavior_embeddings[:])
 
@@ -347,6 +351,7 @@ class Hub(Default, Logger):
 
     def compute_div_scores(self):
         self.offspring_pool[0].div_score = 1-self.population.diversity
+        self.div_scores[0] = 1-self.population.diversity
 
         for index in range(self.top_k):
             tmp = normalize(np.delete(self.behavior_embeddings, 1+index, axis=0))
@@ -361,6 +366,7 @@ class Hub(Default, Logger):
                         self.policy_kernel[i,j] = self.policy_kernel[j,i]
             div = np.linalg.det(self.policy_kernel)
             self.elites[index].div_score = 1-div
+            self.div_scores[index+self.n_offspring] = 1-div
             # self.perf_and_uniqueness[1, index, 0] = 1 - np.mean(self.policy_kernel_p1[:, index])
 
     def select(self):
@@ -371,8 +377,8 @@ class Hub(Default, Logger):
                     self.perf_and_uniqueness[:, index, 0] = -np.inf
                 else:
                     self.perf_and_uniqueness[0, index, 0] = individual.performance
-                    self.perf_and_uniqueness[1, index, 0] = individual.div_score
                 index += 1
+        self.compute_novelty()
 
 
         frontiers = ND_sort(self.perf_and_uniqueness[:, :-self.top_k], epsilon=2.)
@@ -391,10 +397,11 @@ class Hub(Default, Logger):
         # update elites regarding div
         for s in selected:
             if s >= self.pop_size:
-                print('===============', self.perf_and_uniqueness[1, s, 0],  self.perf_and_uniqueness[1, self.pop_size+self.n_offspring:, 0], '===============')
-                if self.perf_and_uniqueness[1, s, 0] > np.min(self.perf_and_uniqueness[1, self.pop_size+self.n_offspring:, 0]):
+                index = s-self.pop_size
+                print('===============', self.div_scores[index],  self.div_scores[self.n_offspring:], '===============')
+                if self.div_scores[index] > np.min(self.div_scores[self.n_offspring:]):
                     self.logger.info('New elite !')
-                    self.elites[np.argmin(self.perf_and_uniqueness[1, self.pop_size+self.n_offspring:, 0])].inerit_from(self.offspring_pool[s-self.pop_size])
+                    self.elites[np.argmin(self.div_scores[self.n_offspring:])].inerit_from(self.offspring_pool[index])
 
         # get stats of selection...
         full_path = 'checkpoints/' + self.running_instance_id + '/ckpt_' + str(
@@ -414,73 +421,17 @@ class Hub(Default, Logger):
             else:
                 self.population[new_index].inerit_from(self.offspring_pool[individual_index-self.pop_size])
 
-    def update_top_k(self):
-        scores = np.empty((self.top_k,), dtype=np.float32)
-        tmp_kernel = np.empty((self.top_k+1, self.top_k+1), dtype=np.float32)
-        tmp_kernel[:-1, :-1] = self.policy_kernel
-
-        for i, index_i in enumerate(self.top_k_index):
-                tmp_kernel[self.top_k, i] = policy_similarity(self.behavior_embeddings[self.pop_size],
-                                                                 self.behavior_embeddings[index_i],
-                                                                 l=self.similarity_l)
-                tmp_kernel[i, self.top_k] = tmp_kernel[self.top_k, i]
-
-        for current_candidate in range(self.top_k):
-            scores[current_candidate] = np.linalg.det(np.delete(np.delete(tmp_kernel, current_candidate,axis=0),
-                                                                current_candidate, axis=1))
-
-        best = np.max(scores)
-        ### TODO ?
-
-
-
-    def compute_novelty(self, indexes):
-        for individual_index in indexes:
+    def compute_novelty(self):
+        all_embedings = normalize(np.concatenate([self.behavior_embeddings_pop, self.behavior_embeddings], axis=0))
+        for individual_index in range(len(all_embedings)):
             distance = 0.
-            for individual2_index in indexes:
+            for individual2_index in range(len(all_embedings)):
                 if individual_index != individual2_index:
-                    distance += 1. - policy_similarity(self.behavior_embeddings[individual_index],
-                                                       self.behavior_embeddings[individual2_index],
+                    distance += 1. - policy_similarity(all_embedings[individual_index],
+                                                       all_embedings[individual2_index],
                                                        self.similarity_l)
-            distance /= np.float32((len(indexes)-1))
+            distance /= np.float32((len(all_embedings)-1))
             self.perf_and_uniqueness[1, individual_index] = distance
-
-    def iterative_select(self):
-        index = 0
-        for pop in [self.population, self.offspring_pool]:
-            for individual in pop:
-                self.perf_and_uniqueness[0, index, 0] = individual.performance
-                index += 1
-
-        selected = list(range(0, self.pop_size))
-        for index in range(self.pop_size, self.pop_size+self.n_offspring):
-            selected.append(index)
-            self.compute_novelty(selected)
-            frontiers = ND_sort(self.perf_and_uniqueness[:, selected])
-            print(frontiers)
-            if len(frontiers[-1]) == 1:
-                frontiers.pop()
-            else:
-                 frontiers[-1] = list(sorted(frontiers[-1], key=lambda index: self.perf_and_uniqueness[0, index, 0]))[1:]
-
-            selected = [selected[index] for frontier in frontiers for index in frontier]
-
-        self.compute_novelty(list(range(self.pop_size+self.n_offspring)))
-
-        # get stats of selection...
-        full_path = 'checkpoints/' + self.running_instance_id + '/ckpt_' + str(
-            self.population.checkpoint_index) + '/'
-        plot_perf_uniq(self.perf_and_uniqueness[:, :, 0], selected, self.population, full_path)
-
-        print(self.perf_and_uniqueness[:, selected, 0])
-
-        for new_index, individual_index in enumerate(sorted(selected)):
-            if individual_index < self.pop_size:
-                self.population[new_index].inerit_from(self.population[individual_index])
-            else:
-                self.population[new_index].inerit_from(self.offspring_pool[individual_index - self.pop_size])
-
-
 
 
     def load(self, ckpt_path):

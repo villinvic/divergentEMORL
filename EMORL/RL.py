@@ -419,16 +419,16 @@ class AC(tf.keras.Model, Default):
 
                 behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
 
-                #all_embed = tf.concat([phi, tf.expand_dims(behavior_embedding, axis=0)], axis=0)
-                mean = tf.reduce_mean(phi, axis=0)
-                std = tf.math.reduce_std(phi, axis=0)+1e-8
+                all_embed = tf.concat([phi, tf.expand_dims(behavior_embedding, axis=0)], axis=0)
+                mean = tf.reduce_mean(all_embed, axis=0)
+                std = tf.math.reduce_std(all_embed, axis=0)+1e-8
 
                 phi = tf.clip_by_value((phi - mean) / std, -2., 2.)
                 normalized = tf.clip_by_value((behavior_embedding - mean) / std, -2., 2.)
 
                 new_K = self.compute_kernel(normalized, phi, K, l, size, parent_index)
                 # tf.print(new_K)
-                div = tf.linalg.det(new_K)
+                div = tf.linalg.det(new_K + tf.eye(size+1) * 1e-8)
 
                 #behavior_distance = self.compute_distance_score(behavior_embedding, phi, l) + 1e-8
 
@@ -457,11 +457,24 @@ class AC(tf.keras.Model, Default):
 
     def compute_kernel(self, new_behavior_embedding, behavior_embeddings, existing_K, l, size, parent_index):
 
-        def similarity_vec(cursor):
-            return self.compute_similarity_norm(new_behavior_embedding, behavior_embeddings[cursor], l)
-        Kp1 = tf.concat([tf.map_fn(similarity_vec, elems=tf.range((size), dtype=tf.int32), fn_output_signature=tf.float32), [1]], axis=0)
+        #def similarity_vec(cursor):
+        #    return self.compute_similarity_norm(new_behavior_embedding, behavior_embeddings[cursor], l)
+        def compute(cursor):
+            i = cursor // (size+1)
+            j = cursor % (size+1)
+            if i == j:
+                return 0.5
+            if j == size:
+                return self.compute_similarity_norm(new_behavior_embedding, behavior_embeddings[i], l)
+            elif j > i:
+                return self.compute_similarity_norm(behavior_embeddings[i], behavior_embeddings[j], l)
+            else:
+                return 0.
 
-        return tf.concat([tf.concat([existing_K, tf.expand_dims(Kp1[:-1], axis=0)], axis=0), tf.expand_dims(Kp1, axis=1)], axis=1)
+        K_up = tf.reshape(tf.map_fn(compute, tf.range((size+1)**2), fn_output_signature=tf.float32), (size+1, size+1))
+        K_sim = K_up + tf.transpose(tf.linalg.band_part(K_up, 0, -1))
+
+        return K_sim
 
     def compute_distance_score(self, new_behavior_embedding, pop_embeddings, l):
         return 1.-self.compute_similarity_bc(tf.expand_dims(new_behavior_embedding, 0), pop_embeddings, l)
