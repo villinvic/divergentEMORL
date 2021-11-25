@@ -381,7 +381,7 @@ class Hub(Default, Logger):
         self.compute_novelty()
 
 
-        frontiers = ND_sort(self.perf_and_uniqueness[:, :-self.top_k], epsilon=2.)
+        frontiers = ND_sort(self.perf_and_uniqueness[:, :-self.top_k], epsilon=0.)
         selected = []
         frontier_index = 0
         while len(selected) < self.pop_size:
@@ -399,7 +399,7 @@ class Hub(Default, Logger):
             if s >= self.pop_size:
                 index = s-self.pop_size
                 print('===============', self.div_scores[index],  self.div_scores[self.n_offspring:], '===============')
-                if self.div_scores[index] > np.min(self.div_scores[self.n_offspring:]):
+                if self.div_scores[index] > np.min(self.div_scores[self.n_offspring:]) and self.perf_and_uniqueness[0,s,0] > np.min(self.perf_and_uniqueness[0,-self.top_k:,0]):
                     self.logger.info('New elite !')
                     self.elites[np.argmin(self.div_scores[self.n_offspring:])].inerit_from(self.offspring_pool[index])
 
