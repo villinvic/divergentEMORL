@@ -398,7 +398,7 @@ class Hub(Default, Logger):
             if s >= self.pop_size:
                 index = s-self.pop_size
                 print('===============', self.div_scores[index],  self.div_scores[self.n_offspring:], '===============')
-                if self.div_scores[index] > np.min(self.div_scores[self.n_offspring:]) and self.perf_and_uniqueness[0,s,0] > np.min(self.perf_and_uniqueness[0,-self.top_k:,0]):
+                if self.div_scores[index] > np.min(self.div_scores[self.n_offspring:]) and self.perf_and_uniqueness[0,s,0]+self.epsilon > np.min(self.perf_and_uniqueness[0,-self.top_k:,0]):
                     self.logger.info('New elite !')
                     self.elites[np.argmin(self.div_scores[self.n_offspring:])].inerit_from(self.offspring_pool[index])
 
