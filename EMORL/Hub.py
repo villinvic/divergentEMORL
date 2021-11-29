@@ -239,7 +239,7 @@ class Hub(Default, Logger):
 
     def __call__(self):
         try:
-            while self.population.generation < self.max_gen:
+            while self.population.checkpoint_index < self.max_gen:
                 self.population.checkpoint_index += 1
                 self.logger.info('------| Starting Generation %d |------' %self.population.checkpoint_index)
                 self.logger.info('Div(P)= %.3f' % self.compute_diversity())
