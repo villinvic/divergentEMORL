@@ -239,7 +239,7 @@ class Hub(Default, Logger):
 
     def __call__(self):
         try:
-            while True:
+            while self.population.generation < self.max_gen:
                 self.population.checkpoint_index += 1
                 self.logger.info('------| Starting Generation %d |------' %self.population.checkpoint_index)
                 self.logger.info('Div(P)= %.3f' % self.compute_diversity())
@@ -256,9 +256,8 @@ class Hub(Default, Logger):
                 self.save()
 
         except KeyboardInterrupt:
-            pass
+            self.save()
 
-        self.save()
         self.logger.info('Hub exited.')
 
     def make_offspring(self):
