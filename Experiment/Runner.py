@@ -8,7 +8,7 @@ class Runner(Default):
         self.ip = ip
         super(Runner, self).__init__()
 
-    def call(self):
+    def __call__(self):
         for i in range(self.n_run):
             hub = Hub(self.ip, skip_init=True)
             hub.max_gen = self.max_gen
