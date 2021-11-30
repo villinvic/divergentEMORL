@@ -13,6 +13,7 @@ class Runner(Default):
             hub = Hub(self.ip, skip_init=True)
             hub.max_gen = self.max_gen
             hub()
+            del hub
 
 
 if __name__ == '__main__':
