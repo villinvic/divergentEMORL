@@ -262,18 +262,24 @@ class Hub(Default, Logger):
 
     def make_offspring(self):
         # select p pairs of individuals, operate crossover with low prob, mutation
-        parents_pairs = np.random.choice(self.pop_size, (self.n_offspring, 2, 1), replace=True)
-        best_parents_pairs = np.empty((self.n_offspring, 2), dtype=np.int32)
-        for i, (p1, p2) in enumerate(parents_pairs):
-            best_parents_pairs[i, :] = sorted(p1, key= lambda index: self.population[index].performance)[-1] , \
-                                       sorted(p2, key= lambda index: self.population[index].performance)[-1]
+        parents = np.random.choice(self.pop_size+self.top_k, (self.n_offspring, 2), replace=False)
 
-        for offspring, parents in zip(self.offspring_pool, best_parents_pairs):
+        for offspring, pair in zip(self.offspring_pool, parents):
+            if pair[0] < self.pop_size:
+                p1 = self.population[pair[0]]
+            else:
+                p1 = self.elites[pair[0]-self.pop_size]
             if np.random.random() < self.crossover_rate:
-                offspring.inerit_from(*self.population[parents])
+
+                if pair[1] < self.pop_size:
+                    p2 = self.population[pair[1]]
+                else:
+                    p2 = self.elites[pair[1]-self.pop_size]
+
+                offspring.inerit_from(p1, p2)
                 offspring.parent_index = parents[0]
             else:
-                offspring.inerit_from(self.population[parents[0]])
+                offspring.inerit_from(p1)
                 offspring.parent_index = np.random.choice(parents)
 
 

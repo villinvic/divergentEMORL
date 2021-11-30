@@ -19,6 +19,9 @@ class Logger:
 
         logger.setLevel(self.LOGLEVEL)
         logger.addHandler(handler)
+        self.handler = handler
         return logger
 
+    def __del__(self):
+        self.logger.removeHandler(self.handler)
 
