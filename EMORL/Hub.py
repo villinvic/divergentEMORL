@@ -405,7 +405,7 @@ class Hub(Default, Logger):
         # get stats of selection...
         full_path = 'checkpoints/' + self.running_instance_id + '/ckpt_' + str(
             self.population.checkpoint_index) + '/'
-        plot_perf_uniq(self.perf_and_uniqueness[:, :-self.top_k, 0], selected, self.population, self.elites, full_path)
+        plot_perf_uniq(self.perf_and_uniqueness[:, :, 0], selected, self.population, self.top_k, full_path)
 
         print(self.perf_and_uniqueness[:, selected, 0])
 

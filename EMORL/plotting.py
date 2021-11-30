@@ -5,7 +5,7 @@ import sys
 import numpy as np
 
 
-def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, elites, path):
+def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, top_k, path):
     plt.clf()
 
     selected_set = set(selected)
@@ -16,7 +16,7 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, elites, path):
     'old selected' : set(),
     'new discarded' : set(),
     'old discarded' : set(),
-    'elites'        : [np.empty((elites.size,), dtype=np.float32), np.empty((elites.size,), dtype=np.float32)],
+    'elites'        : set(range(len(perf_and_uniqueness[0])-top_k, len(perf_and_uniqueness[0]))),
     }
 
     for x in selected:
@@ -31,12 +31,7 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, elites, path):
             cases['new discarded'].add(x)
 
     for c in cases:
-        if c != 'elites':
-            cases[c] = [perf_and_uniqueness[1, list(cases[c])], perf_and_uniqueness[0, list(cases[c])]]
-
-    for i, e in enumerate(elites):
-        cases['elites'][0][i] = e.div_score
-        cases['elites'][1][i] = e.performance
+        cases[c] = [perf_and_uniqueness[1, list(cases[c])], perf_and_uniqueness[0, list(cases[c])]]
 
     plt.style.use(['science', 'scatter', 'grid'])
 
