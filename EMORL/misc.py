@@ -197,10 +197,11 @@ if __name__ == '__main__':
     e_w['actor_core'][0][0][::3] += -np.random.random(e_w['actor_core'][0][0][::3].shape) ** 3
     e_w['actor_core'][0][1][::3] -= np.random.random(e_w['actor_core'][0][1][::3].shape) * 0.6
     b.genotype['brain'].set_training_params(e_w)
+    c.inerit_from(a,b)
     pop = [a,b,c,d,e]
     embeddings = np.empty((len(pop), 80, 10))
     for i, ind in enumerate(pop):
-        embeddings[i,: ]= ind.genotype['brain'].policy.get_probs(a.genotype['brain'].dense_1(a.genotype['brain'].lstm(s)))
+        embeddings[i,: ]= ind.genotype['brain'].policy.get_probs(a.genotype['brain'].dense_1(s))
 
     embeddings[:] = normalize(embeddings)
 
