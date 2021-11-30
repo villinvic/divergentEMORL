@@ -79,7 +79,8 @@ class Worker(Default):
                     self.player.genotype['brain'].lstm.reset_states()
         self.send_exp()
 
-        self.trajectory['hidden_states'][:] = np.concatenate([hidden_h,hidden_c], axis=0)
+        if self.player.genotype['brain'].has_lstm:
+            self.trajectory['hidden_states'][:] = np.concatenate([hidden_h,hidden_c], axis=0)
 
     def __call__(self):
         for _ in range(3):
