@@ -567,7 +567,10 @@ class AC(tf.keras.Model, Default):
 
     def get_distribution(self, states):
         with tf.device("/gpu:{}".format(0)):
-            x = self.lstm(states)
+            if self.has_lstm:
+                x = self.lstm(states)
+            else:
+                x = states
             x = self.dense_1(x)
             x = self.policy.get_probs(x)
         return x
