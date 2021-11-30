@@ -417,7 +417,8 @@ class AC(tf.keras.Model, Default):
                                           + alpha * ent)
 
 
-                behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
+                #behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
+                behavior_embedding = self.policy.get_probs(self.dense_1(S[:, :-1]))
 
                 all_embed = tf.concat([phi, tf.expand_dims(behavior_embedding, axis=0)], axis=0)
                 mean = tf.reduce_mean(all_embed, axis=0)
@@ -434,7 +435,10 @@ class AC(tf.keras.Model, Default):
 
                 total_loss = 0.5 * v_loss + p_loss - lamb * tf.math.log(div)
 
-            grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
+            #grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
+            #                     + self.V.trainable_variables + self.dense_1.trainable_variables)
+
+            grad = tape.gradient(total_loss, self.policy.trainable_variables
                                  + self.V.trainable_variables + self.dense_1.trainable_variables)
 
             # x is used to track the gradient size
@@ -445,9 +449,10 @@ class AC(tf.keras.Model, Default):
                 x += tf.reduce_mean(tf.abs(gg))
             x /= c
 
-            self.optim.apply_gradients(zip(grad, self.policy.trainable_variables + self.lstm.trainable_variables
+            #self.optim.apply_gradients(zip(grad, self.policy.trainable_variables + self.lstm.trainable_variables
+            #                               + self.V.trainable_variables + self.dense_1.trainable_variables))
+            self.optim.apply_gradients(zip(grad, self.policy.trainable_variables
                                            + self.V.trainable_variables + self.dense_1.trainable_variables))
-
             self.step.assign_add(1)
             mean_entropy = tf.reduce_mean(ent)
             min_entropy = tf.reduce_min(ent)

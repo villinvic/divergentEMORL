@@ -1,4 +1,3 @@
 layer_type, size
-"LSTM", 128
 "Dense", 128
 "Dense", 128

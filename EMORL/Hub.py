@@ -99,7 +99,7 @@ class Hub(Default, Logger):
     def init_sampled_trajectories(self, dummy_env):
         for j in range(self.TRAJECTORY_LENGTH):
 
-            n_steps = 1
+            n_steps = 5
             for _ in range(n_steps):
                 done, _ = dummy_env.step(np.random.choice(dummy_env.action_dim))
                 if done:
@@ -232,8 +232,8 @@ class Hub(Default, Logger):
         return None
 
     def sample_states(self, batch):
-        if self.traj_index < 1 or np.random.random() < self.save_traj_batch_chance:
-            self.sampled_trajectory_tmp[0, :, :] = batch[np.random.randint(0, self.BATCH_SIZE)]
+        if self.traj_index < 1 or np.random.random() < self.sample_state_chance:
+            self.sampled_trajectory_tmp[0, self.traj_index % self.TRAJECTORY_LENGTH, :] = batch[np.random.randint(0, self.BATCH_SIZE), np.random.randint(0, self.TRAJECTORY_LENGTH)]
 
             self.traj_index += 1
 

@@ -75,7 +75,8 @@ class Worker(Default):
 
             if done :
                 self.game.reset()
-                self.player.genotype['brain'].lstm.reset_states()
+                if self.player.genotype['brain'].has_lstm:
+                    self.player.genotype['brain'].lstm.reset_states()
         self.send_exp()
 
         self.trajectory['hidden_states'][:] = np.concatenate([hidden_h,hidden_c], axis=0)

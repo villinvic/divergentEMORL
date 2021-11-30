@@ -56,7 +56,8 @@ def eval_behav(args):
             final_states[i] = state_idx - 1
             print(i)
             game.reset()
-            player.genotype['brain'].lstm.reset_states()
+            if player.genotype['brain'].has_lstm:
+                player.genotype['brain'].lstm.reset_states()
     except KeyboardInterrupt:
         pass
 
