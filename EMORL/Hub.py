@@ -277,10 +277,10 @@ class Hub(Default, Logger):
                     p2 = self.elites[pair[1]-self.pop_size]
 
                 offspring.inerit_from(p1, p2)
-                offspring.parent_index = parents[0]
+                offspring.parent_index = pair[0]
             else:
                 offspring.inerit_from(p1)
-                offspring.parent_index = np.random.choice(parents)
+                offspring.parent_index = np.random.choice(pair)
 
 
             if np.random.random() < self.mutation_rate:
