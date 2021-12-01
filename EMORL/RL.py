@@ -424,21 +424,20 @@ class AC(tf.keras.Model, Default):
                 phi = phi + tf.random.normal(phi.shape, 0, 0.001, dtype=tf.float32)
 
                 all_embed = tf.concat([phi, tf.expand_dims(behavior_embedding, axis=0)], axis=0)
-                mean = tf.reduce_mean(all_embed, axis=0)
-                std = tf.math.reduce_std(all_embed, axis=0)+1e-8
+                #mean = tf.reduce_mean(all_embed, axis=0)
+                #std = tf.math.reduce_std(all_embed, axis=0)+1e-8
 
-                all_normalized = tf.clip_by_value((all_embed - mean) / std, -1., 1.)
-                flat = tf.reshape(all_normalized, (all_normalized.shape[0], all_normalized.shape[1]*all_normalized.shape[2]*all_normalized.shape[3]))
-                new_K = self.compute_kernel(flat, size)
+                #all_normalized = tf.clip_by_value((all_embed - mean) / std, -1., 1.)
+                flat = tf.reshape(all_embed, (all_embed.shape[0], all_embed.shape[1]*all_embed.shape[2]*all_embed.shape[3]))
+                new_K = self.compute_kernel(flat, l)
 
                 #new_K = self.compute_kernel(normalized, phi, K, l, size, parent_index)
                 #tf.print(new_K)
 
-                div = tf.linalg.det(new_K + tf.eye(size+1) * 1e-4)
+                log_div = tf.linalg.logdet(new_K + tf.eye(size+1) * 1e-4)
 
 
-                total_loss = 0.5 * v_loss + p_loss - lamb * tf.math.log(div)
-                tf.print(total_loss)
+                total_loss = 0.5 * v_loss + p_loss - lamb * log_div
 
             #grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
             #                     + self.V.trainable_variables + self.dense_1.trainable_variables)
@@ -460,28 +459,13 @@ class AC(tf.keras.Model, Default):
             mean_entropy = tf.reduce_mean(ent)
             min_entropy = tf.reduce_min(ent)
             # max_entropy = tf.reduce_max(ent)
-            return v_loss, mean_entropy, min_entropy, div, tf.reduce_min(
+            return v_loss, mean_entropy, min_entropy, tf.exp(log_div), tf.reduce_min(
                 p_log), tf.reduce_max(p_log), x
 
-    def compute_kernel(self, embeddings , size):
-
-        #def similarity_vec(cursor):
-        #    return self.compute_similarity_norm(new_behavior_embedding, behavior_embeddings[cursor], l)
-        l = 1. / embeddings.shape[-1]
-        def compute(cursor):
-            i = cursor // (size+1)
-            j = cursor % (size+1)
-            if i == j:
-                return 0.5
-            elif j>i:
-                return self.compute_similarity_norm(embeddings[i], embeddings[j], l)
-            else:
-                return 0.
-
-        K_up = tf.reshape(tf.map_fn(compute, tf.range((size+1)**2), fn_output_signature=tf.float32), (size+1, size+1))
-        K_sim = K_up + tf.transpose(tf.linalg.band_part(K_up, 0, -1))
-
-        return K_sim
+    def compute_kernel(self, embeddings, l ):
+        left = tf.broadcast_to(tf.expand_dims(embeddings, axis=0), (embeddings.shape[0], *embeddings.shape))
+        right = tf.broadcast_to(tf.expand_dims(embeddings, axis=1), (embeddings.shape[0], *embeddings.shape))
+        return tf.exp(- tf.reduce_sum(tf.square(left - right), axis=-1) / (2. * l ** 2))
 
     def compute_gae(self, v, rewards, last_v, gamma):
         v = tf.transpose(v)

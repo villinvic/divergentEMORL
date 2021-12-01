@@ -27,11 +27,19 @@ def bc_distance(a, b):
 def norm(a, b):
     return np.linalg.norm(a-b)
 
+def diff(a, b):
+    return np.sum(a - b, axis=-1)
+
 def normalize(x, exclude=0, clip=1):
     return np.clip((x - np.mean(x[exclude:], axis=0))/(np.std(x[exclude:], axis=0)+1e-8),-clip, clip)
 
-def policy_similarity(a, b, l=1, func=norm):
-    return np.exp(-func(a, b)**2/(2 * l ** 2))
+def policy_similarity(a, b, l=1, func=diff):
+    return np.exp(-func(a, b)**2 / (2 * l ** 2))
+
+def rbf_kernel(embeddings, l):
+    left = tf.broadcast_to(tf.expand_dims(embeddings, axis=0), (embeddings.shape[0], *embeddings.shape))
+    right = tf.broadcast_to(tf.expand_dims(embeddings, axis=1), (embeddings.shape[0], *embeddings.shape))
+    return tf.exp(- tf.reduce_sum(tf.square(left - right), axis=-1) / ( 2. * l ** 2))
 
 def nn_crossover(a, b, architecture={}):
     pairs = [pairwise_cross_corr(ax, bx) for ax,bx in zip(a,b)]

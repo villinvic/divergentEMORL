@@ -6,10 +6,9 @@ from time import time
 import datetime
 import fire
 import os
-from sklearn.metrics.pairwise import rbf_kernel
 
 from EMORL.Population import Population
-from EMORL.misc import policy_similarity, normalize, MovingAverage
+from EMORL.misc import policy_similarity, MovingAverage, rbf_kernel
 from EMORL.MOO import ND_sort
 from EMORL.plotting import plot_perf_uniq
 from Gym.Boxing import Boxing
@@ -136,9 +135,8 @@ class Hub(Default, Logger):
     def compute_diversity(self):
         for index, e in enumerate(self.elites):
                 self.behavior_embeddings[self.n_offspring+index, :, :, :] = e.probabilities_for(self.sampled_trajectory)
-        tmp = normalize(self.behavior_embeddings[self.n_offspring:])
 
-        self.policy_kernel[:] = rbf_kernel(tmp.reshape((self.top_k, np.prod(tmp.shape[1:]))))
+        self.policy_kernel[:] = rbf_kernel(self.behavior_embeddings[self.n_offspring:].reshape((self.top_k, np.prod(self.behavior_embeddings.shape[1:]))), self.l)
 
         div = np.linalg.det(self.policy_kernel)
         print(self.policy_kernel)
@@ -206,7 +204,7 @@ class Hub(Default, Logger):
                 self.offspring_pool[index].mean_entropy = \
                     self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectory,
                                                                        np.delete(self.behavior_embeddings[self.n_offspring:], excluded, axis=0),
-                                                                       np.delete(np.delete(self.policy_kernel, excluded, axis=0), excluded, axis=1), self.similarity_l,
+                                                                       np.delete(np.delete(self.policy_kernel, excluded, axis=0), excluded, axis=1), self.l,
                                                                        self.top_k-1,
                                                                        self.offspring_pool[index].genotype['learning'],
                                                                        states, actions, rews, probs, hidden_states, 0)
@@ -342,7 +340,7 @@ class Hub(Default, Logger):
                     if individual_index != individual2_index and individual2_index not in failed_indexes:
                         distance += 1. - policy_similarity(self.behavior_embeddings[individual_index],
                                                            self.behavior_embeddings[individual2_index],
-                                                           self.similarity_l)
+                                                           self.l)
             distance /= (self.pop_size + self.n_offspring - 1)
             self.perf_and_uniqueness[1, individual_index] = distance"""
 
@@ -351,8 +349,8 @@ class Hub(Default, Logger):
         self.div_scores[0] = 1-self.population.diversity
 
         for index in range(self.top_k):
-            tmp = normalize(np.delete(self.behavior_embeddings, 1+index, axis=0))
-            self.policy_kernel[:] = rbf_kernel(tmp.reshape((self.top_k, np.prod(tmp.shape[1:]))))
+            tmp = np.delete(self.behavior_embeddings, 1+index, axis=0)
+            self.policy_kernel[:] = rbf_kernel(tmp.reshape((self.top_k, np.prod(tmp.shape[1:]))), self.l)
             div = np.linalg.det(self.policy_kernel)
             self.elites[index].div_score = 1-div
             self.div_scores[index+self.n_offspring] = 1-div
@@ -411,16 +409,15 @@ class Hub(Default, Logger):
                 self.population[new_index].inerit_from(self.offspring_pool[individual_index-self.pop_size])
 
     def compute_novelty(self):
-        all_embedings = normalize(np.concatenate([self.behavior_embeddings_pop, self.behavior_embeddings], axis=0))
+        all_embedings = np.concatenate([self.behavior_embeddings_pop, self.behavior_embeddings], axis=0)
         all_embedings = all_embedings.reshape((all_embedings.shape[0], np.prod(all_embedings.shape[1:])))
-        l = np.float32(all_embedings.shape[-1])
         for individual_index in range(len(all_embedings)):
             distance = 0.
             for individual2_index in range(len(all_embedings)):
                 if individual_index != individual2_index:
                     distance += 1. - policy_similarity(all_embedings[individual_index],
                                                        all_embedings[individual2_index],
-                                                       l)
+                                                       self.l)
             distance /= np.float32((len(all_embedings)-1))
             self.perf_and_uniqueness[1, individual_index] = distance
 
