@@ -1,6 +1,6 @@
 name, lower_bound, higher_bound
-"movement", 0.0001, 0.1
-"hit", 0.01, 1.0
-"hurt", 0.01, 1.0
-"win", 1., 10.
-"time", 0.001, 0.1
+"movement", 0.0001, 0.01
+"hit", 0.001, 0.5
+"hurt", 0.001, 0.5
+"win", 1.0, 10.
+"time", 0.001, 0.01

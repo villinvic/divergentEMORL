@@ -6,6 +6,7 @@ from time import time
 import datetime
 import fire
 import os
+from sklearn.metrics.pairwise import rbf_kernel
 
 from EMORL.Population import Population
 from EMORL.misc import policy_similarity, normalize, MovingAverage
@@ -50,13 +51,13 @@ class Hub(Default, Logger):
 
 
         # tajectories used to compute behavior distance
-        self.sampled_trajectory = np.zeros((1, self.TRAJECTORY_LENGTH, dummy_env.state_dim), dtype=np.float32)
+        self.sampled_trajectory = np.zeros((1, self.sample_size, dummy_env.state_dim), dtype=np.float32)
         self.sampled_trajectory_tmp = np.zeros_like(self.sampled_trajectory)
         self.traj_index = 0
         self.behavior_embeddings = np.zeros((self.top_k+self.n_offspring, 1,
-                                              self.TRAJECTORY_LENGTH-1, dummy_env.action_dim), dtype=np.float32)
+                                              self.sample_size, dummy_env.action_dim), dtype=np.float32)
         self.behavior_embeddings_pop = np.zeros((self.pop_size, 1,
-                                             self.TRAJECTORY_LENGTH - 1, dummy_env.action_dim), dtype=np.float32)
+                                             self.sample_size, dummy_env.action_dim), dtype=np.float32)
 
         #self.behavior_embeddings_elite = np.zeros((self.top_k, 1,
         #                                     self.TRAJECTORY_LENGTH - 1, dummy_env.action_dim), dtype=np.float32)
@@ -97,7 +98,7 @@ class Hub(Default, Logger):
 
 
     def init_sampled_trajectories(self, dummy_env):
-        for j in range(self.TRAJECTORY_LENGTH):
+        for j in range(self.sample_size):
 
             n_steps = 5
             for _ in range(n_steps):
@@ -134,19 +135,10 @@ class Hub(Default, Logger):
 
     def compute_diversity(self):
         for index, e in enumerate(self.elites):
-                self.behavior_embeddings[self.n_offspring+index, :, :, :] = e.probabilities_for(self.sampled_trajectory[:, :-1])
+                self.behavior_embeddings[self.n_offspring+index, :, :, :] = e.probabilities_for(self.sampled_trajectory)
         tmp = normalize(self.behavior_embeddings[self.n_offspring:])
 
-        for i in range(self.top_k):
-            for j in range(self.top_k):
-                if i==j:
-                    self.policy_kernel[i, j] = 1.
-                elif j > i:
-                    self.policy_kernel[i, j] = policy_similarity(tmp[i],
-                                                                 tmp[j],
-                                                                 l=self.similarity_l)
-                else:
-                    self.policy_kernel[i, j] = self.policy_kernel[j, i]
+        self.policy_kernel[:] = rbf_kernel(tmp.reshape((self.top_k, np.prod(tmp.shape[1:]))))
 
         div = np.linalg.det(self.policy_kernel)
         print(self.policy_kernel)
@@ -192,7 +184,7 @@ class Hub(Default, Logger):
 
         return None
 
-    def train(self, index):
+    def train(self, index, excluded):
         if len(self.exp) >= self.BATCH_SIZE:
             # Get experience from the queue
             trajectory = pd.DataFrame(self.exp[:self.BATCH_SIZE]).values
@@ -211,12 +203,11 @@ class Hub(Default, Logger):
 
             # Train
             with tf.summary.record_if(self.train_cntr % self.write_summary_freq == 0):
-                #excluded = np.random.choice(self.top_k)
                 self.offspring_pool[index].mean_entropy = \
                     self.offspring_pool[index].genotype['brain'].train(index, self.offspring_pool[index].parent_index, self.sampled_trajectory,
-                                                                       self.behavior_embeddings[self.n_offspring:],
-                                                                       self.policy_kernel, self.similarity_l,
-                                                                       self.top_k,
+                                                                       np.delete(self.behavior_embeddings[self.n_offspring:], excluded, axis=0),
+                                                                       np.delete(np.delete(self.policy_kernel, excluded, axis=0), excluded, axis=1), self.similarity_l,
+                                                                       self.top_k-1,
                                                                        self.offspring_pool[index].genotype['learning'],
                                                                        states, actions, rews, probs, hidden_states, 0)
             self.train_cntr += 1
@@ -233,7 +224,7 @@ class Hub(Default, Logger):
 
     def sample_states(self, batch):
         if self.traj_index < 1 or np.random.random() < self.sample_state_chance:
-            self.sampled_trajectory_tmp[0, self.traj_index % self.TRAJECTORY_LENGTH, :] = batch[np.random.randint(0, self.BATCH_SIZE), np.random.randint(0, self.TRAJECTORY_LENGTH)]
+            self.sampled_trajectory_tmp[0, self.traj_index % self.sample_size, :] = batch[np.random.randint(0, self.BATCH_SIZE), np.random.randint(0, self.TRAJECTORY_LENGTH)]
 
             self.traj_index += 1
 
@@ -302,9 +293,10 @@ class Hub(Default, Logger):
             for _ in range(6):
                 self.recv_training_data()
             del self.exp[:]
+            excluded = np.random.choice(self.top_k)
             while time() - start_time < self.train_time:
                 self.recv_training_data()
-                perf = self.train(index)
+                perf = self.train(index, excluded)
                 if perf is not None:
                     self.eval_queue.push(perf)
                 # if not improving or too low entropy, drop training
@@ -336,10 +328,10 @@ class Hub(Default, Logger):
         self.behavior_embeddings[:] = normalize(self.behavior_embeddings)"""
         for pop in [self.offspring_pool, self.elites]:
             for individual in pop:
-                self.behavior_embeddings[index, :, :, :] = individual.probabilities_for(self.sampled_trajectory[:, :-1])
+                self.behavior_embeddings[index, :, :, :] = individual.probabilities_for(self.sampled_trajectory)
                 index += 1
         for i, individual in enumerate(self.population):
-            self.behavior_embeddings_pop[i, :, :, :] = individual.probabilities_for(self.sampled_trajectory[:, :-1])
+            self.behavior_embeddings_pop[i, :, :, :] = individual.probabilities_for(self.sampled_trajectory)
 
         #self.behavior_embeddings_n[:] = normalize(self.behavior_embeddings[:])
 
@@ -360,15 +352,7 @@ class Hub(Default, Logger):
 
         for index in range(self.top_k):
             tmp = normalize(np.delete(self.behavior_embeddings, 1+index, axis=0))
-            for i in range(self.top_k+self.n_offspring-1):
-                for j in range(self.top_k+self.n_offspring-1):
-                    if i == j:
-                        self.policy_kernel[i, j] = 1.
-                    elif j > i:
-                        self.policy_kernel[i, j] = policy_similarity(tmp[i], tmp[j],
-                                                                     l=self.similarity_l)
-                    else:
-                        self.policy_kernel[i,j] = self.policy_kernel[j,i]
+            self.policy_kernel[:] = rbf_kernel(tmp.reshape((self.top_k, np.prod(tmp.shape[1:]))))
             div = np.linalg.det(self.policy_kernel)
             self.elites[index].div_score = 1-div
             self.div_scores[index+self.n_offspring] = 1-div
@@ -428,13 +412,15 @@ class Hub(Default, Logger):
 
     def compute_novelty(self):
         all_embedings = normalize(np.concatenate([self.behavior_embeddings_pop, self.behavior_embeddings], axis=0))
+        all_embedings = all_embedings.reshape((all_embedings.shape[0], np.prod(all_embedings.shape[1:])))
+        l = np.float32(all_embedings.shape[-1])
         for individual_index in range(len(all_embedings)):
             distance = 0.
             for individual2_index in range(len(all_embedings)):
                 if individual_index != individual2_index:
                     distance += 1. - policy_similarity(all_embedings[individual_index],
                                                        all_embedings[individual2_index],
-                                                       self.similarity_l)
+                                                       l)
             distance /= np.float32((len(all_embedings)-1))
             self.perf_and_uniqueness[1, individual_index] = distance
 

@@ -27,7 +27,7 @@ def bc_distance(a, b):
 def norm(a, b):
     return np.linalg.norm(a-b)
 
-def normalize(x, exclude=0, clip=2):
+def normalize(x, exclude=0, clip=1):
     return np.clip((x - np.mean(x[exclude:], axis=0))/(np.std(x[exclude:], axis=0)+1e-8),-clip, clip)
 
 def policy_similarity(a, b, l=1, func=norm):

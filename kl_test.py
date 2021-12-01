@@ -1,40 +1,35 @@
-from EMORL.misc import policy_similarity, kl_divergence
+from EMORL.misc import policy_similarity, normalize
+from EMORL.Individual import Individual
+from sklearn.metrics.pairwise import rbf_kernel
 import numpy as np
 
 np.set_printoptions(precision=4, suppress=True)
 
-full_dim = (1, 79, 10)
-amount = 1
-for d in full_dim[:-1]:
-    amount *= d
+a = Individual(0, 60, 10, [], batch_dim=(20,1), trainable=True)
+b = Individual(0, 60, 10, [], batch_dim=(20,1), trainable=True)
+c = Individual(0, 60, 10, [], batch_dim=(20,1), trainable=True)
+pop = [a, b, c]
 
+a_w = a.genotype['brain'].get_training_params()
+a_w['actor_core'][0][0][::2] += np.random.random(a_w['actor_core'][0][0][::2].shape)*0.1
+a_w['actor_core'][0][1][::3] -= np.random.random(a_w['actor_core'][0][1][::3].shape)*0.1
 
+b_w = b.genotype['brain'].get_training_params()
+b_w['actor_core'][0][0][::5] -= np.random.random(b_w['actor_core'][0][0][::5].shape)*0
+b_w['actor_core'][0][1][::1] -= np.random.random(b_w['actor_core'][0][1][::1].shape)*0
 
-policies = np.zeros( (10,)+full_dim, dtype=np.float64)
-x = np.random.random(full_dim)
-for i in range(10):
-    policies[i, :] = 1/10. + np.random.random(full_dim) * 0.1
-    policies[i, :] /= np.sum(policies[i, :], axis=1)[:,np.newaxis]
+c.genotype['brain'].set_training_params(a_w)
+b.genotype['brain'].set_training_params(b_w)
 
-K = np.zeros((10,10), dtype=np.float32)
-kl = np.zeros((10,10), dtype=np.float32)
+state = np.random.random((20,1,60)) * 0.1
+state += np.random.normal(0,0.1, (20,1, 60))
+out = np.array([i.probabilities_for(state) for i in pop])
+ent = [-np.mean(np.sum(p * np.log(p), axis=-1)) for p in out]
+flattened = out.reshape(3, 20*10)
+normalized = normalize(flattened)
+#print(normalized)
+#print(out, ent, policy_similarity(*normalized[1:], l=5), policy_similarity(*normalized[:-1], l=5), policy_similarity(normalized[0], normalized[2], l=5))
 
-policies[:] = np.clip((policies - np.mean(policies, axis=0))/(np.std(policies, axis=0)+1e-8),-2, 2)
-
-
-
-
-for i in range(10):
-    for j in range(10):
-        if i==j:
-            K[i, j] = 1.
-        elif j>i:
-            K[i, j] = policy_similarity(policies[i], policies[j], l=20)
-        else:
-            K[i, j] = K[j, i] #policy_similarity(policies[i], policies[j], l=1)
-        kl[i, j] = 1 - K[i, j]
-
-#K = policy_similarity(policies[:,0,:], l=1)
-
-print(K)
-print(np.linalg.det(K), np.linalg.slogdet(K))
+K = rbf_kernel(normalized[:])
+print(ent)
+print(K, np.linalg.det(K))
