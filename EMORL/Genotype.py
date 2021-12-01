@@ -179,8 +179,10 @@ class EvolvingVariable(Default):
             self.history.append(self._current_value)
 
     def crossover(self, other_variable):
-        if np.random.random() < 0.5:
-            self._current_value = other_variable._current_value
+        t = np.random.uniform(-(1+self.perturb_power), 1+self.perturb_power)
+        self._current_value = np.clip((1 - t) * self._current_value + t * other_variable._current_value, *self.domain)
+        #if np.random.random() < 0.5:
+        #    self._current_value = other_variable._current_value
 
     def freeze(self):
         self.frozen = True

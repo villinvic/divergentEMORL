@@ -89,7 +89,8 @@ def load_and_stuff(path, pop_size, stuff='plot'):
     def visualize_pop():
         for i, individual in enumerate(pop):
             player.set_arena_genes(individual.get_arena_genes())
-            player.genotype['brain'].lstm.reset_states()
+            if player.genotype['brain'].has_lstm:
+                player.genotype['brain'].lstm.reset_states()
             print('-------individual', i, '-------')
             pprint([individual.genotype['learning'],individual.genotype['experience']])
 
