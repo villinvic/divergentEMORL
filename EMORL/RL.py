@@ -8,8 +8,6 @@ import numpy as np
 from tensorflow.keras.activations import relu, softmax
 from copy import deepcopy
 
-import tensorflow_probability as tfp
-
 from config.Loader import Default
 from EMORL.misc import nn_crossover
 
