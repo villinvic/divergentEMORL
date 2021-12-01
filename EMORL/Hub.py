@@ -301,19 +301,24 @@ class Hub(Default, Logger):
     def compute_div_scores(self):
         self.offspring_pool[0].div_score = 1-self.population.diversity
         self.div_scores[0] = 1-self.population.diversity
+        self.perf_and_uniqueness[1, -1, 0] = - np.log(self.population.diversity)
 
         for index in range(self.pop_size):
             tmp = np.delete(self.behavior_embeddings, 1+index, axis=0)
             self.policy_kernel[:] = rbf_kernel(tmp.reshape((self.pop_size, np.prod(tmp.shape[1:]))), self.l)
             div = np.linalg.det(self.policy_kernel)
             self.population[index].div_score = 1-div
-            self.perf_and_uniqueness[1, index+self.n_offspring, 0] = - np.log(div)
+            self.perf_and_uniqueness[1, index, 0] = - np.log(div)
 
     def select(self):
         index = 0
         for i, pop in enumerate([self.population, self.offspring_pool]):
             for individual in pop:
                 self.perf_and_uniqueness[0, index, 0] = individual.performance
+                if i == 1 and individual.performance < np.min(self.perf_and_uniqueness[0, self.n_offspring, 0]) - self.epsilon:
+                    self.perf_and_uniqueness[0, index, 0] = self.bad_score
+                else:
+                    self.perf_and_uniqueness[0, index, 0] = individual.performance
                 index += 1
         #self.compute_novelty()
 
@@ -355,6 +360,7 @@ class Hub(Default, Logger):
                 self.population[new_index].inerit_from(self.offspring_pool[individual_index-self.pop_size])
 
     def compute_novelty(self):
+        # UNUSED
         all_embedings = np.concatenate([self.behavior_embeddings_pop, self.behavior_embeddings], axis=0)
         all_embedings = all_embedings.reshape((all_embedings.shape[0], np.prod(all_embedings.shape[1:])))
         for individual_index in range(len(all_embedings)):
