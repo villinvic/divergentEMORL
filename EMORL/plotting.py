@@ -5,7 +5,7 @@ import sys
 import numpy as np
 
 
-def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, top_k, path):
+def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, path):
     plt.clf()
 
     selected_set = set(selected)
@@ -16,7 +16,6 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, top_k, path):
     'old selected' : set(),
     'new discarded' : set(),
     'old discarded' : set(),
-    'elites'        : set(range(len(perf_and_uniqueness[0])-top_k, len(perf_and_uniqueness[0]))),
     }
 
     for x in selected:
@@ -43,14 +42,14 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, top_k, path):
 
     plt.ylabel(r'$\zeta_{perf}(\pi)$')
     plt.xlabel(r'$\zeta_{nov}(\pi)$')
-    plt.xlim(-0.05, 1.05)
-    plt.ylim(-51, 51)
+    #plt.xlim(-0.05, 1.05)
+    plt.ylim(-55, 55)
     plt.legend()
     plt.draw()
 
-    if not os.path.exists(path+'elites/'):
+    if not os.path.exists(path):
         try:
-            os.makedirs(path+'elites/')
+            os.makedirs(path)
         except OSError as exc:
             print(exc)
     plt.savefig(path+'scatter.png')
