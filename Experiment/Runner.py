@@ -1,5 +1,6 @@
 from EMORL.Hub import Hub
 from config.Loader import Default
+from EMORL.plotting import plot_stats
 import fire
 
 
@@ -13,6 +14,7 @@ class Runner(Default):
             hub = Hub(self.ip, skip_init=True)
             hub.max_gen = self.max_gen
             hub()
+            plot_stats(hub.population, 'results/experiment_'+str(i))
             del hub
 
 

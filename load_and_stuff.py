@@ -10,7 +10,7 @@ import multiprocessing
 
 from EMORL.Individual import Individual
 from EMORL.Population import Population
-from EMORL.plotting import plot_stats
+from EMORL.plotting import plot_stats, heatmap
 # from Game.core import Game
 from pprint import pprint
 from Gym.Boxing import Boxing as Game
@@ -60,8 +60,9 @@ def eval_behav(args):
                 player.genotype['brain'].lstm.reset_states()
     except KeyboardInterrupt:
         pass
-
     stats = game.compute_stats(states[:state_idx], final_states, points)
+    heatmap(game.locations(states[:state_idx][::100]), 'results/', 'location_heatmap_' + str(k), title='Location heatmap for individual ' + str(k))
+    heatmap(game.punch_locations(states[:state_idx]), 'results/', 'punches_heatmap_' + str(k), title='Punches location heatmap for individual ' + str(k))
 
     print('-------individual', k, '-------')
     pprint(stats)
@@ -93,6 +94,7 @@ def load_and_stuff(path, pop_size, stuff='plot'):
                 player.genotype['brain'].lstm.reset_states()
             print('-------individual', i, '-------')
             pprint([individual.genotype['learning'],individual.genotype['experience']])
+            pprint(['performance:', individual.performance])
 
             play_episode(game, player)
 

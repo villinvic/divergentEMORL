@@ -111,7 +111,6 @@ class Boxing:
         time.sleep(0.04)
         self.env.render()
 
-
     def compute_stats(self, states, final_states, scores):
         stats = dict()
         stats['win_rate'] = scores[0] / np.float32(np.sum(scores))
@@ -125,3 +124,10 @@ class Boxing:
         stats['mobility'] = np.mean(np.sqrt((states[1:, 0] - states[:-1, 0])**2 + (states[1:, 1] - states[:-1, 1])**2))
 
         return stats
+
+    def punch_locations(self, states):
+        ds = states[1:] - states[:-1]
+        return self.locations(states[1:][np.where(ds[:, 4]>0)])
+
+    def locations(self, states):
+        return states[:, :2]
