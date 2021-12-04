@@ -14,7 +14,8 @@ class Runner(Default):
             hub = Hub(self.ip, skip_init=True)
             hub.max_gen = self.max_gen
             hub()
-            plot_stats(hub.population, 'results/experiment_'+str(i))
+            if self.do_plot:
+                plot_stats(hub.population, 'results/experiment_'+str(i))
             del hub
 
 
