@@ -57,14 +57,7 @@ class BoxingMA:
 
         self.state_dim = len(self.state)
 
-        self.actions = np.arange(16)
-        self.act_index = 0
-
-
     def action_to_id(self, actions):
-        print(self.act_index // 50 % 16)
-        actions[0] = self.actions[self.act_index // 50 % 16]
-        self.act_index += 1
         self.past_action[:] = actions
         return actions
 
