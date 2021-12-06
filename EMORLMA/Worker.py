@@ -52,8 +52,8 @@ class Worker(Default):
     @zmq.decorators.socket(zmq.REQ)
     def request_match(self, socket, last_match_result=None):
         socket.connect("tcp://%s:%d" % (self.hub_ip, self.PARAM_PORT))
-        socket.setsockopt(zmq.RCVTIMEO, 5000)
-        #socket.setsockopt(zmq.LINGER, 0)
+        socket.setsockopt(zmq.RCVTIMEO, 50000)
+        socket.setsockopt(zmq.LINGER, 0)
         try:
             socket.send_pyobj((last_match_result, self.player_ids))
             params, player_ids = socket.recv_pyobj()
