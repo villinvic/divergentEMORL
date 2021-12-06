@@ -4,6 +4,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import numpy as np
 import fire
 import zmq
+import zmq.decorators
 import time
 import signal
 
@@ -17,16 +18,13 @@ from EMORLMA.Individual import Individual
 class Worker(Default):
     def __init__(self, render=False, hub_ip='127.0.0.1'):
         self.render = render
+        self.hub_ip = hub_ip
         super(Worker, self).__init__()
         self.game = Game(render=render, frameskip=self.frameskip)
         self.players = (Individual(-1, self.game.state_dim, self.game.action_dim, []),
                         Individual(-1, self.game.state_dim, self.game.action_dim, []))
         #self.player = Individual(-1, self.game.env.observation_space.shape[0], self.game.env.action_space.shape[0], [])
         c = zmq.Context()
-        self.blob_socket = c.socket(zmq.REQ)
-        self.blob_socket.setsockopt(zmq.RCVTIMEO, 30000)
-        self.blob_socket.setsockopt(zmq.LINGER, 0)
-        self.blob_socket.connect("tcp://%s:%d" % (hub_ip, self.PARAM_PORT))
         self.exp_socket = c.socket(zmq.PUSH)
         self.exp_socket.connect("tcp://%s:%d" % (hub_ip, self.EXP_PORT))
         self.player_ids = np.zeros(2, dtype=np.int32)
@@ -51,10 +49,14 @@ class Worker(Default):
 
         signal.signal(signal.SIGINT, lambda frame, signal : sys.exit())
 
-    def request_match(self, last_match_results=None):
+    @zmq.decorators.socket(zmq.REQ)
+    def request_match(self, socket, last_match_results=None):
+        socket.connect("tcp://%s:%d" % (self.hub_ip, self.PARAM_PORT))
+        socket.setsockopt(zmq.RCVTIMEO, 30000)
+        socket.setsockopt(zmq.LINGER, 0)
         try:
-            self.blob_socket.send_pyobj((last_match_results, self.player_ids))
-            params, player_ids = self.blob_socket.recv_pyobj()
+            socket.send_pyobj((last_match_results, self.player_ids))
+            params, player_ids = socket.recv_pyobj()
             for param, player in zip(params, self.players):
                 player.set_arena_genes(param)
             for i, player_id in enumerate(player_ids):
