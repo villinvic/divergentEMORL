@@ -59,7 +59,7 @@ class Hub(Default, Logger):
             #Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.max_see, dummy_env.view_range)
 
         c = zmq.Context()
-        self.blob_socket = c.socket(zmq.ROUTER)
+        self.blob_socket = c.socket(zmq.REP)
         self.blob_socket.bind("tcp://%s:%d" % (ip, self.PARAM_PORT))
         self.exp_socket = c.socket(zmq.PULL)
         self.exp_socket.bind("tcp://%s:%d" % (ip, self.EXP_PORT))
@@ -107,7 +107,7 @@ class Hub(Default, Logger):
 
     def handle_requests(self, index):
         try:
-            match_result, player_ids = self.blob_socket.recv_pyobj(zmq.NOBLOCK)
+            match_result, player_ids = self.blob_socket.recv_pyobj()
             self.logger.info((match_result, player_ids))
             if match_result is not None:
                 if player_ids[0] < self.pop_size:
