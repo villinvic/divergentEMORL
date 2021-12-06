@@ -50,12 +50,12 @@ class Worker(Default):
         signal.signal(signal.SIGINT, lambda frame, signal : sys.exit())
 
     @zmq.decorators.socket(zmq.REQ)
-    def request_match(self, socket, last_match_results=None):
+    def request_match(self, socket, last_match_result=None):
         socket.connect("tcp://%s:%d" % (self.hub_ip, self.PARAM_PORT))
         socket.setsockopt(zmq.RCVTIMEO, 30000)
         socket.setsockopt(zmq.LINGER, 0)
         try:
-            socket.send_pyobj((last_match_results, self.player_ids))
+            socket.send_pyobj((last_match_result, self.player_ids))
             params, player_ids = socket.recv_pyobj()
             for param, player in zip(params, self.players):
                 player.set_arena_genes(param)
