@@ -62,7 +62,8 @@ class Worker(Default):
             for i, player_id in enumerate(player_ids):
                 self.trajectory[i]['player_id'] = player_id
             self.player_ids[:] = player_ids
-        except zmq.ZMQError:
+        except zmq.ZMQError as e:
+            print(e)
             return False
             pass
         return True
@@ -122,7 +123,8 @@ class Worker(Default):
             last_match_result = self.play_match()
             c += 1
             print(last_match_result, c)
-            self.request_match(last_match_result=last_match_result)
+            while not self.request_match(last_match_result=last_match_result):
+                pass
 
 
 if __name__ == '__main__':
