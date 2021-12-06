@@ -55,8 +55,6 @@ class Hub(Default, Logger):
         self.perf_and_uniqueness = np.zeros((2, self.pop_size+self.n_offspring, 1), dtype=np.float32)
         self.div_scores = np.zeros((self.n_offspring+self.pop_size), dtype=np.float32)
 
-        self.eval_queue = MovingAverage(self.moving_avg_size)
-
         self.rewards = BoxingRewards(self.BATCH_SIZE, self.TRAJECTORY_LENGTH)
             #Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.max_see, dummy_env.view_range)
 
@@ -195,7 +193,7 @@ class Hub(Default, Logger):
             self.train_cntr += 1
             tf.summary.experimental.set_step(self.train_cntr)
 
-            print('train ! Elo=', self.offspring_pool[index].elo(), ', R=', self.eval_queue(),
+            print('train ! Elo=', self.offspring_pool[index].elo(),
                   ', H=', self.offspring_pool[index].mean_entropy, ', alpha=', self.offspring_pool[index].genotype['learning']['entropy_cost'])
 
             self.sample_states(states)
@@ -266,16 +264,7 @@ class Hub(Default, Logger):
             while time() - start_time < self.train_time:
                 self.handle_requests(index)
                 self.recv_training_data()
-                perf = self.train(index, excluded)
-                if perf is not None:
-                    self.eval_queue.push(perf)
-                # if not improving or too low entropy, drop training
-                if self.eval_queue.trend_count < -self.bad_trend_maxcount or self.offspring_pool[index].mean_entropy \
-                        < self.max_entropy * self.critical_entropy_ratio:
-                    self.logger.info('Dropped training !')
-                    break
-
-            self.eval_queue.reset()
+                self.train(index, excluded)
 
     def compute_embeddings(self):
         index = 0
