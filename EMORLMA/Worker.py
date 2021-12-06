@@ -52,8 +52,6 @@ class Worker(Default):
     @zmq.decorators.socket(zmq.REQ)
     def request_match(self, socket, last_match_result=None):
         socket.connect("tcp://%s:%d" % (self.hub_ip, self.PARAM_PORT))
-        socket.setsockopt(zmq.RCVTIMEO, 30000)
-        socket.setsockopt(zmq.LINGER, 0)
         try:
             socket.send_pyobj((last_match_result, self.player_ids))
             params, player_ids = socket.recv_pyobj()
@@ -65,7 +63,7 @@ class Worker(Default):
         except zmq.ZMQError as e:
             print(e)
             return False
-            pass
+
         return True
 
     def send_exp(self):
