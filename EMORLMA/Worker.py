@@ -49,7 +49,7 @@ class Worker(Default):
 
         signal.signal(signal.SIGINT, lambda frame, signal : sys.exit())
 
-    @zmq.decorators.socket(zmq.REQ)
+    @zmq.decorators.socket(zmq.DEALER)
     def request_match(self, socket, last_match_result=None):
         socket.connect("tcp://%s:%d" % (self.hub_ip, self.PARAM_PORT))
         socket.setsockopt(zmq.RCVTIMEO, 50000)
