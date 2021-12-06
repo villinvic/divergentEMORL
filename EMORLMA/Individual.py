@@ -46,7 +46,7 @@ class Individual:
     def set_all(self, params, trainable=True):
         self.genotype.set_params(params['genotype'], trainable)
         self.performance = params['performance']
-        self.elo.start = params['win_loss']
+        self.elo.start = params['elo']
 
     def policy(self, observation):
         if self.genotype['brain'] is None:
