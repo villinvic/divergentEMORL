@@ -111,7 +111,7 @@ class Worker(Default):
 
     def __call__(self):
         for _ in range(10):
-            x = self.request_match(None)
+            x = self.request_match(last_match_result=None)
             if x :
                 break
             time.sleep(1)
@@ -122,7 +122,7 @@ class Worker(Default):
             last_match_result = self.play_match()
             c += 1
             print(last_match_result, c)
-            self.request_match(last_match_result)
+            self.request_match(last_match_result=last_match_result)
 
 
 if __name__ == '__main__':
