@@ -59,7 +59,7 @@ class Hub(Default, Logger):
             #Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.max_see, dummy_env.view_range)
 
         c = zmq.Context()
-        self.blob_socket = c.socket(zmq.REP)
+        self.blob_socket = c.socket(zmq.ROUTER)
         self.blob_socket.bind("tcp://%s:%d" % (ip, self.PARAM_PORT))
         self.exp_socket = c.socket(zmq.PULL)
         self.exp_socket.bind("tcp://%s:%d" % (ip, self.EXP_PORT))
