@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import os
-import sys
-
 import numpy as np
+import matplotlib.cm as cm
+from scipy.ndimage.filters import gaussian_filter
 
 
 def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, path):
@@ -17,6 +17,7 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, path):
     'new discarded' : set(),
     'old discarded' : set(),
     }
+
     for x in selected:
         if x < new_pop.size:
             cases['old selected'].add(x)
@@ -28,17 +29,20 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, path):
         else:
             cases['new discarded'].add(x)
 
+    for c in cases:
+        cases[c] = [perf_and_uniqueness[1, list(cases[c])], perf_and_uniqueness[0, list(cases[c])]]
+
     plt.style.use(['science', 'scatter', 'grid'])
 
     print(selected)
-    for case, indexes in cases.items():
-        print(case, indexes)
-        plt.scatter(perf_and_uniqueness[1, list(indexes)], perf_and_uniqueness[0, list(indexes)], label=case, marker='v')
+    for case, (div, perf) in cases.items():
+        print(case, div)
+        plt.scatter(div, perf, label=case, marker='v')
 
 
     plt.ylabel(r'$\zeta_{perf}(\pi)$')
     plt.xlabel(r'$\zeta_{nov}(\pi)$')
-    plt.xlim(-0.05, 1.05)
+    #plt.xlim(-0.05, 1.05)
     plt.legend()
     plt.draw()
 
@@ -128,6 +132,62 @@ def plot_stats(population, path):
 
     print('ok')
     fig.savefig(path + 'stats.png')
+
+
+
+def data_coord2view_coord(p, vlen, pmin, pmax):
+    dp = pmax - pmin
+    dv = (p - pmin) / dp * vlen
+    return dv
+
+def nearest_neighbours(xs, ys, reso, n_neighbours):
+    im = np.zeros([reso, reso])
+    extent = [np.min(xs), np.max(xs), np.min(ys), np.max(ys)]
+
+    xv = data_coord2view_coord(xs, reso, extent[0], extent[1])
+    yv = data_coord2view_coord(ys, reso, extent[2], extent[3])
+    for x in range(reso):
+        for y in range(reso):
+            xp = (xv - x)
+            yp = (yv - y)
+
+            d = np.sqrt(xp**2 + yp**2)
+
+            div = np.sum(d[np.argpartition(d.ravel(), n_neighbours)[:n_neighbours]])
+            if div == 0.:
+                im[y][x] = 1.
+            else:
+                im[y][x] = 1. / (3*(div)**0.33)
+
+    return im, extent
+
+def build_heatmap(x, y, s, bins=1000):
+    heatmap, xedges, yedges = np.histogram2d(x, y, bins=bins)
+    heatmap = gaussian_filter(heatmap, sigma=s)
+
+    extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+    return heatmap.T, extent
+
+def heatmap(trajectory, path, name='heatmap', title='Location heatmap'):
+    # traj.shape -> (N, 2)
+    x = trajectory[:, 0]
+    y = trajectory[:, 1]
+    y = np.max(y) - y
+    resolution = 250
+    plt.style.use(['science', 'ieee'])
+    plt.clf()
+    neighbours = 16
+    im, extent = nearest_neighbours(x, y, resolution, neighbours)
+    plt.imshow(im, origin='lower', cmap=cm.jet)
+    #plt.xlim(extent[0], extent[1])
+    #plt.ylim(extent[2], extent[3])
+    plt.axis('off')
+
+    plt.title(title)
+    plt.savefig(path + name+'.png')
+    plt.axis('on')
+
+
 
 
 

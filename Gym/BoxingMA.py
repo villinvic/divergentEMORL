@@ -30,10 +30,11 @@ class BoxingMA:
         self.scales = np.array(
             [0.05, 0.05, 0.05, 0.05, 0.01, 0.01, 0.014, 0.014, 0.014, 0.004, 0.004, 0.004, 0.004, 0.004, 0.5],
             dtype=np.float32)
+        self.index_permut = np.array([2,3,0,1,5,4,8,9,6,7,12,13,10,11,14], dtype=np.int32)
+        self.action_dim = 10
         self.state_dim_base = len(self.indexes)
+        self.state_dim_actions = len(self.indexes) + self.action_dim
 
-        self.action_dim = self.env.action_space.n
-        print(self.action_dim, self.env.observation_space.shape)
         self.framestack = framestack
         self.frameskip = frameskip
         self.do_render = render
@@ -42,16 +43,27 @@ class BoxingMA:
         self.seconds = 17
         self.frames = 20
 
-        self.state = np.zeros(self.state_dim_base * framestack)
+        self.state = np.zeros(self.state_dim_actions * framestack)
         self.opp_state = np.zeros_like(self.state)
-        self.state[:] = np.tile(self.preprocess(self.env.reset()), framestack)
-        self.opp_state[:] = self.state
+
+        self.action_embedding = np.zeros((2, self.action_dim), dtype=np.float32)
+        self.past_action = np.zeros(2, dtype=np.int32)
+        init_state = self.preprocess(self.env.reset())
+        opp_init_state = init_state[self.index_permut]
+        self.start_state = np.concatenate([init_state, self.action_embedding[0]])
+        self.opp_start_state = np.concatenate([opp_init_state, self.action_embedding[1]])
+
+        self.state[:] = np.tile(self.start_state, framestack)
+
         self.state_dim = len(self.state)
 
-        permuts = [2,3,0,1,5,4,8,9,6,7,12,13,10,11,14]
-        self.index_permut = np.array([x+i*self.state_dim_base for x in permuts for i in range(framestack)])
+        self.actions = np.arange(10)
+        self.act_index = 0
 
-        # self.action = np.zeros(self.action_dim*2, dtype=np.int16)
+
+    def action_to_id(self, actions):
+        self.past_action[:] = actions
+        return actions
 
     @staticmethod
     def interpret_hex_as_dec(value):
@@ -66,7 +78,9 @@ class BoxingMA:
         seconds = self.interpret_hex_as_dec(obs[self.seconds])
         frames = obs[self.frames]
         time = minutes + (seconds + frames/60.) / 60.
+        obs = obs.astype(np.float32)
         obs[0] = time
+
         return (obs[self.indexes] - self.centers) * self.scales
 
     def win(self, done, obs):
@@ -76,25 +90,58 @@ class BoxingMA:
         return 0
 
     def update_opp_state(self):
-        self.opp_state[self.index_permut] = self.state
+        self.opp_state[self.index_permut] = self.state[:self.state_dim_base]
+        self.opp_state[self.state_dim_base:self.state_dim_actions] = 0.
+        self.opp_state[self.state_dim_base + self.past_action[1]] = 1.
 
 
     def step(self, actions):
+        #reward = 0
+        actions = self.action_to_id(actions)
+        if self.do_render:
+            self.render()
         for _ in range(self.frameskip):
-            observation, _, done, _ = self.env.step(
-                actions)
+            observation, rr, done, info = self.env.step(actions)
+            #reward += rr
         observation = self.preprocess(observation)
         win = self.win(done, observation)
-        self.state[self.state_dim_base:] = self.state[:-self.state_dim_base]
+        self.state[self.state_dim_actions:] = self.state[:-self.state_dim_actions]
+        self.opp_state[self.state_dim_actions:] = self.opp_state[:-self.state_dim_actions]
         self.state[:self.state_dim_base] = observation
+        self.state[self.state_dim_base:self.state_dim_actions] = 0.
+        self.state[self.state_dim_base+self.past_action[0]] = 1.
         self.update_opp_state()
 
         return done, win
 
     def reset(self):
-        self.state[:] = np.tile(self.preprocess(self.env.reset()), self.framestack)
-        self.update_opp_state()
+        self.env.reset()
+        self.state[:] = np.tile(self.start_state, self.framestack)
+        self.opp_state[:] = np.tile(self.opp_start_state, self.framestack)
+        #self.update_opp_state()
+        self.past_action = [0,0]
 
     def render(self):
         time.sleep(0.04)
         self.env.render()
+
+    def compute_stats(self, states, final_states, scores):
+        stats = dict()
+        stats['win_rate'] = scores[0] / np.float32(np.sum(scores))
+
+        actions = np.sum(states[:, self.state_dim_base:self.state_dim_actions], axis=0)
+        stats['action_avg_prob'] = actions / np.sum(actions)
+        stats['distance'] = np.mean(np.sqrt((states[:, 0] - states[:, 2])**2 + (states[:, 1] - states[:, 3])**2))
+        stats['avg_timer'] = np.mean(states[final_states, 14])
+        stats['avg_punches'] = np.mean(states[final_states, 4])
+        stats['avg_hurt'] = np.mean(states[final_states, 5])
+        stats['mobility'] = np.mean(np.sqrt((states[1:, 0] - states[:-1, 0])**2 + (states[1:, 1] - states[:-1, 1])**2))
+
+        return stats
+
+    def punch_locations(self, states):
+        ds = states[1:] - states[:-1]
+        return self.locations(states[1:][np.where(ds[:, 4]>0)])
+
+    def locations(self, states):
+        return states[:, :2]

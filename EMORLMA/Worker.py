@@ -8,89 +8,108 @@ import time
 import signal
 
 from config.Loader import Default
+#from Game.core import Game
 from Gym.BoxingMA import BoxingMA as Game
 from EMORLMA.Individual import Individual
+
 
 
 class Worker(Default):
     def __init__(self, render=False, hub_ip='127.0.0.1'):
         self.render = render
         super(Worker, self).__init__()
-        self.game =  Game(render=render, frameskip=self.frameskip)
+        self.game = Game(render=render, frameskip=self.frameskip)
         self.players = (Individual(-1, self.game.state_dim, self.game.action_dim, []),
                         Individual(-1, self.game.state_dim, self.game.action_dim, []))
-
+        #self.player = Individual(-1, self.game.env.observation_space.shape[0], self.game.env.action_space.shape[0], [])
         c = zmq.Context()
-        self.blob_socket = c.socket(zmq.SUB)
-        self.blob_socket.subscribe(b'')
+        self.blob_socket = c.socket(zmq.REQ)
+        self.blob_socket.setsockopt(zmq.RCVTIMEO, 30000)
+        self.blob_socket.setsockopt(zmq.LINGER, 0)
         self.blob_socket.connect("tcp://%s:%d" % (hub_ip, self.PARAM_PORT))
         self.exp_socket = c.socket(zmq.PUSH)
         self.exp_socket.connect("tcp://%s:%d" % (hub_ip, self.EXP_PORT))
+        self.player_ids = np.zeros(2, dtype=np.int32)
 
-        hidden_h, hidden_c = self.player.genotype['brain'].init_body(np.zeros((1,1, self.game.state_dim), dtype=np.float32))
+        for p in self.players:
+            hidden_h, hidden_c = p.genotype['brain'].init_body(np.zeros((1,1, self.game.state_dim), dtype=np.float32))
 
 
-        self.trajectories = tuple({
+        self.trajectory = [{
             'state' : np.zeros((self.TRAJECTORY_LENGTH, self.game.state_dim), dtype=np.float32),
             'action' : np.zeros((self.TRAJECTORY_LENGTH,), dtype=np.int32),
             'probs': np.zeros((self.TRAJECTORY_LENGTH, self.game.action_dim), dtype=np.float32),
             'win': np.zeros((self.TRAJECTORY_LENGTH,), dtype=np.float32),
+            #'reward': np.zeros((self.TRAJECTORY_LENGTH, self.game.n_rewards), dtype=np.float32),
             'hidden_states': np.zeros((2, 128), dtype=np.float32),
-            'id': None,
-        } for _ in range(2))
+            'player_id': 0
+        } for _ in range(2)]
 
-        self.trajectories[0]['hidden_states'][:] = np.concatenate([hidden_h, hidden_c], axis=0)
-        self.trajectories[1]['hidden_states'][:] = np.concatenate([hidden_h, hidden_c], axis=0)
+        for i, p in enumerate(self.players):
+            if p.genotype['brain'].has_lstm:
+                self.trajectory[i]['hidden_states'][:] = np.concatenate([hidden_h,hidden_c], axis=0)
 
         signal.signal(signal.SIGINT, lambda frame, signal : sys.exit())
 
-    def get_params(self):
+    def request_match(self, last_match_results=None):
         try:
-            for p in self.players:
-                p.set_arena_genes(self.blob_socket.recv_pyobj(zmq.NOBLOCK))
-                # get genes depending on player id
+            self.blob_socket.send_pyobj((last_match_results, self.player_ids))
+            params, player_ids = self.blob_socket.recv_pyobj()
+            for param, player in zip(params, self.players):
+                player.set_arena_genes(param)
+            for i, player_id in enumerate(player_ids):
+                self.trajectory[i]['player_id'] = player_id
+            self.player_ids[:] = player_ids
         except zmq.ZMQError:
             return False
             pass
         return True
 
     def send_exp(self):
-        self.exp_socket.send_pyobj(self.trajectories[0])
-        self.exp_socket.send_pyobj(self.trajectories[1])
+        self.exp_socket.send_pyobj(self.trajectory[0])
+        self.exp_socket.send_pyobj(self.trajectory[1])
 
-    def play_trajectory(self):
-        for index in range(self.TRAJECTORY_LENGTH):
-            if self.render:
-                self.game.render()
-            #s = self.game.state / self.game.scales
-            action_id, distribution, hidden_h, hidden_c = self.players[0].policy(self.game.state)
-            action_id_opp, distribution_opp, hidden_h_opp, hidden_c_opp = self.players[1].policy(self.game.opp_state)
-            self.trajectories[0]['state'][index, :] = self.game.state
-            self.trajectories[0]['action'][index] = action_id
-            self.trajectories[0]['probs'][index] = distribution
+        # TODO LSTM hidden state update
 
-            self.trajectories[1]['state'][index, :] = self.game.opp_state
-            self.trajectories[2]['action'][index] = action_id_opp
-            self.trajectories[3]['probs'][index] = distribution_opp
+    def play_match(self):
+        done = False
+        index = 0
+        while not done:
+            action_1, distribution_1, hidden_h_1, hidden_c_1 = self.players[0].policy(self.game.state)
+            action_2, distribution_2, hidden_h_2, hidden_c_2 = self.players[1].policy(self.game.opp_state)
+            self.trajectory[0]['state'][index % self.TRAJECTORY_LENGTH, :] = self.game.state
+            self.trajectory[0]['action'][index % self.TRAJECTORY_LENGTH] = action_1
+            self.trajectory[0]['probs'][index % self.TRAJECTORY_LENGTH] = distribution_1
 
-            done, win = self.game.step([action_id, action_id_opp])
-            #perf, done, reward = self.game.step(action_id)
-            self.trajectories[0]['win'][index] = win
-            self.trajectories[1]['win'][index] = -win
-            #self.trajectory['reward'][index] = reward
+            self.trajectory[1]['state'][index % self.TRAJECTORY_LENGTH, :] = self.game.opp_state
+            self.trajectory[1]['action'][index % self.TRAJECTORY_LENGTH] = action_2
+            self.trajectory[1]['probs'][index % self.TRAJECTORY_LENGTH] = distribution_2
 
-            if done :
-                self.game.reset()
-                for p in self.players:
-                    p.genotype['brain'].lstm.reset_states()
-        self.send_exp()
+            done, win = self.game.step([action_1, action_2])
+            self.trajectory[0]['win'][index % self.TRAJECTORY_LENGTH] = win
+            self.trajectory[1]['win'][index % self.TRAJECTORY_LENGTH] = -win
 
-        self.trajectories[0]['hidden_states'][:] = np.concatenate([hidden_h,hidden_c], axis=0)
-        self.trajectories[1]['hidden_states'][:] = np.concatenate([hidden_h_opp, hidden_c_opp], axis=0)
+            index += 1
+            if index % self.TRAJECTORY_LENGTH == 0:
+                self.send_exp()
+        if index % self.TRAJECTORY_LENGTH != 0:
+            for player_index in range(2):
+                self.trajectory[player_index]['state'][index % self.TRAJECTORY_LENGTH:, :] =\
+                    self.trajectory[player_index]['state'][index % self.TRAJECTORY_LENGTH-1, :]
+                self.trajectory[player_index]['win'][index % self.TRAJECTORY_LENGTH:] = 0.
+            self.send_exp()
+
+        self.game.reset()
+        for p in self.players:
+            if p.genotype['brain'].has_lstm:
+                p.genotype['brain'].lstm.reset_states()
+
+        return win
+
 
     def __call__(self):
-        for _ in range(30):
-            x = self.get_params()
+        for _ in range(10):
+            x = self.request_match(None)
             if x :
                 break
             time.sleep(1)
@@ -98,9 +117,10 @@ class Worker(Default):
         print('LETS GO')
         c = 0
         while True:
-            self.play_trajectory()
+            last_match_result = self.play_match()
             c += 1
-            self.get_params()
+            print(last_match_result, c)
+            self.request_match(last_match_result)
 
 
 if __name__ == '__main__':

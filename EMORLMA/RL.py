@@ -1,6 +1,7 @@
 import sys
 
 import tensorflow as tf
+import itertools
 from tensorflow.keras.layers import Dense, LSTM
 from tensorflow.keras.backend import set_value
 import numpy as np
@@ -416,16 +417,32 @@ class AC(tf.keras.Model, Default):
                                           * tf.stop_gradient(targets[:, 1:] * gamma + rewards - v_all[:, :-1])
                                           + alpha * ent)
 
-                behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
-                #new_K = self.compute_kernel(behavior_embedding, phi, K, l, size, parent_index)
-                #_, log_div = tf.linalg.slogdet(new_K + tf.eye(size) * 10e-4)
 
-                behavior_distance = self.compute_distance_score(behavior_embedding, phi, l) + 1e-8
+                #behavior_embedding = self.policy.get_probs(self.dense_1(self.lstm(S))[:, :-1])
+                behavior_embedding = self.policy.get_probs(self.dense_1(S))
 
-                total_loss = 0.5 * v_loss + p_loss - lamb * tf.math.log(behavior_distance)
+                phi = phi + tf.random.normal(phi.shape, 0, 0.001, dtype=tf.float32)
 
-            grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
-                                 + self.V.trainable_variables + self.dense_1.trainable_variables)
+                all_embed = tf.concat([phi, tf.expand_dims(behavior_embedding, axis=0)], axis=0)
+                #mean = tf.reduce_mean(all_embed, axis=0)
+                #std = tf.math.reduce_std(all_embed, axis=0)+1e-8
+
+                #all_normalized = tf.clip_by_value((all_embed - mean) / std, -1., 1.)
+                flat = tf.reshape(all_embed, (all_embed.shape[0], all_embed.shape[1]*all_embed.shape[2]*all_embed.shape[3]))
+                new_K = self.compute_kernel(flat, l)
+
+                #new_K = self.compute_kernel(normalized, phi, K, l, size, parent_index)
+                #tf.print(new_K)
+
+                log_div = tf.linalg.logdet(new_K + tf.eye(size+1) * 1e-4)
+
+
+                total_loss = 0.5 * v_loss + p_loss - lamb * log_div
+
+            #grad = tape.gradient(total_loss, self.policy.trainable_variables + self.lstm.trainable_variables
+            #                     + self.V.trainable_variables + self.dense_1.trainable_variables)
+
+            grad = tape.gradient(total_loss, self.policy.trainable_variables + self.V.trainable_variables + self.dense_1.trainable_variables)
 
             # x is used to track the gradient size
             x = 0.0
@@ -435,38 +452,20 @@ class AC(tf.keras.Model, Default):
                 x += tf.reduce_mean(tf.abs(gg))
             x /= c
 
-            self.optim.apply_gradients(zip(grad, self.policy.trainable_variables + self.lstm.trainable_variables
-                                           + self.V.trainable_variables + self.dense_1.trainable_variables))
-
+            #self.optim.apply_gradients(zip(grad, self.policy.trainable_variables + self.lstm.trainable_variables
+            #                               + self.V.trainable_variables + self.dense_1.trainable_variables))
+            self.optim.apply_gradients(zip(grad, self.policy.trainable_variables + self.V.trainable_variables + self.dense_1.trainable_variables))
             self.step.assign_add(1)
             mean_entropy = tf.reduce_mean(ent)
             min_entropy = tf.reduce_min(ent)
             # max_entropy = tf.reduce_max(ent)
-            return v_loss, mean_entropy, min_entropy, behavior_distance, tf.reduce_min(
+            return v_loss, mean_entropy, min_entropy, tf.exp(log_div), tf.reduce_min(
                 p_log), tf.reduce_max(p_log), x
 
-    def compute_kernel(self, new_behavior_embedding, behavior_embeddings, existing_K, l, size, parent_index):
-
-        def similarity(cursor):
-            int_cursor = tf.cast(cursor, tf.int32)
-            i = int_cursor // size
-            j = int_cursor % size
-            if i == j:
-                return 1.
-            elif i == parent_index:
-                return self.compute_similarity_bc(new_behavior_embedding, behavior_embeddings[j], l)
-            elif j == parent_index:
-                return self.compute_similarity_bc(behavior_embeddings[i], new_behavior_embedding, l)
-            else:
-                return existing_K[i, j]
-
-        K = tf.map_fn(similarity, elems=tf.range(size**2, dtype=tf.int32), fn_output_signature=tf.float32)
-
-        return tf.reshape(K, (size, size))
-
-    def compute_distance_score(self, new_behavior_embedding, pop_embeddings, l):
-        return 1.-self.compute_similarity_bc(tf.expand_dims(new_behavior_embedding, 0), pop_embeddings, l)
-
+    def compute_kernel(self, embeddings, l ):
+        left = tf.broadcast_to(tf.expand_dims(embeddings, axis=0), (embeddings.shape[0], *embeddings.shape))
+        right = tf.broadcast_to(tf.expand_dims(embeddings, axis=1), (embeddings.shape[0], *embeddings.shape))
+        return tf.exp(- tf.reduce_sum(tf.square(left - right), axis=-1) / (2. * l ** 2))
 
     def compute_gae(self, v, rewards, last_v, gamma):
         v = tf.transpose(v)
@@ -504,6 +503,17 @@ class AC(tf.keras.Model, Default):
         return tf.concat([returns, tf.expand_dims(last_vr, axis=1)], axis=1)
 
     @staticmethod
+    def rbf(dists):
+        size = dists.shape[0]
+        K = 1.0 / dists.shape[1]
+
+        norms = tf.reshape([tf.math.reduce_euclidean_norm(dists[i]-dists[j]) for i,j in itertools.product(range(size), range(size))], (size, size))
+        tf.print(norms)
+
+        return tf.exp(-K * tf.square(norms))
+
+
+    @staticmethod
     def compute_similarity_kl(dist_1, dist_2, l):
         return tf.exp(-tf.square(tf.reduce_mean(tf.reduce_sum(
             dist_1 * (tf.math.log(dist_1 + 1e-8) - tf.math.log(dist_2 + 1e-8)), axis=-1)))/(2.*l**2))
@@ -511,6 +521,10 @@ class AC(tf.keras.Model, Default):
     @staticmethod
     def compute_similarity_bc(dist_1, dist_2, l):
         return tf.exp(-tf.square(tf.reduce_mean(-tf.math.log(tf.reduce_sum(tf.sqrt(dist_1*dist_2), axis=-1)+1e-8)))/(2.*l**2))
+
+    @staticmethod
+    def compute_similarity_norm(dist_1, dist_2, l):
+        return tf.exp(-tf.square(tf.math.reduce_euclidean_norm(dist_1-dist_2)) * l)
 
     def get_params(self):
         actor_weights = [dense.get_weights() for dense in [self.dense_1] + self.policy.denses]
@@ -544,10 +558,12 @@ class AC(tf.keras.Model, Default):
             dense.set_weights(dense_layer_weights)
         self.V.v.set_weights(params['value_head'])
 
-    @tf.function
     def get_distribution(self, states):
         with tf.device("/gpu:{}".format(0)):
-            x = self.lstm(states)
+            if self.has_lstm:
+                x = self.lstm(states)
+            else:
+                x = states
             x = self.dense_1(x)
             x = self.policy.get_probs(x)
         return x
@@ -567,53 +583,83 @@ class AC(tf.keras.Model, Default):
     def crossover(self, other_policy):
         parents = [self.get_training_params(), other_policy.get_training_params()]
         l = []
-        for w in parents:
-            l.append([])
-            for layer_name, weights in w.items():
+        if self.has_lstm:
+            for w in parents:
+                l.append([])
+                for layer_name, weights in w.items():
+                    if 'core' in layer_name:
+                        for sub_layer in weights:
+                            l[-1].append(sub_layer[0])
+                            l[-1][-1] = np.concatenate([l[-1][-1], sub_layer[1][np.newaxis]], axis=0)
+                    else:
+                        if 'lstm' in layer_name:
+                            l[-1].append(weights[0][:, :weights[0].shape[1] * 3 // 4])
+                            l[-1].append(weights[0][:, weights[0].shape[1] * 3 // 4:])
+                            l[-1].append(weights[1])
+                            l[-1][-3] = np.concatenate([l[-1][-3], weights[-1][np.newaxis, :weights[0].shape[1] * 3 // 4]],
+                                                       axis=0)
+                            l[-1][-2] = np.concatenate([l[-1][-2], weights[-1][np.newaxis, weights[0].shape[1] * 3 // 4:]],
+                                                       axis=0)
+                        else:
+                            l[-1].append(weights[0])
+                            l[-1][-1] = np.concatenate([l[-1][-1], weights[1][np.newaxis]], axis=0)
+
+            crossovered = nn_crossover(*l, architecture={
+                # Automate ?
+                0: None, 1: None, 2: None, 3: 1, 4: 3, 5: 4, 6: 3, 7: 6
+            })
+
+            count = 0
+            for layer_name, weights in parents[0].items():
                 if 'core' in layer_name:
-                    for sub_layer in weights:
-                        l[-1].append(sub_layer[0])
-                        l[-1][-1] = np.concatenate([l[-1][-1], sub_layer[1][np.newaxis]], axis=0)
+                    for sub_layer_i in range(len(weights)):
+                        weights[sub_layer_i][0][:] = crossovered[count][:-1]
+                        weights[sub_layer_i][1][:] = crossovered[count][-1]
+                        count += 1
                 else:
                     if 'lstm' in layer_name:
-                        l[-1].append(weights[0][:, :weights[0].shape[1] * 3 // 4])
-                        l[-1].append(weights[0][:, weights[0].shape[1] * 3 // 4:])
-                        l[-1].append(weights[1])
-                        l[-1][-3] = np.concatenate([l[-1][-3], weights[-1][np.newaxis, :weights[0].shape[1] * 3 // 4]],
-                                                   axis=0)
-                        l[-1][-2] = np.concatenate([l[-1][-2], weights[-1][np.newaxis, weights[0].shape[1] * 3 // 4:]],
-                                                   axis=0)
+                        print(weights[0].shape)
+                        weights[0][:, :weights[0].shape[1] * 3 // 4] = crossovered[count][:-1]
+                        weights[-1][:weights[0].shape[1] * 3 // 4] = crossovered[count][-1]
+                        count += 1
+                        weights[0][:, weights[0].shape[1] * 3 // 4:] = crossovered[count][:-1]
+                        weights[-1][weights[0].shape[1] * 3 // 4:] = crossovered[count][-1]
+                        count += 1
+                        weights[1][:] = crossovered[count]
+                        count += 1
+
                     else:
+                        weights[0][:] = crossovered[count][:-1]
+                        weights[1][:] = crossovered[count][-1]
+                        count += 1
+        else:
+            for w in parents:
+                l.append([])
+                for layer_name, weights in w.items():
+                    if 'core' in layer_name:
+                        for sub_layer in weights:
+                            l[-1].append(sub_layer[0])
+                            l[-1][-1] = np.concatenate([l[-1][-1], sub_layer[1][np.newaxis]], axis=0)
+                    elif weights is not None:
                         l[-1].append(weights[0])
                         l[-1][-1] = np.concatenate([l[-1][-1], weights[1][np.newaxis]], axis=0)
 
-        crossovered = nn_crossover(*l, architecture={
-            # Automate ?
-            0: None, 1: None, 2: None, 3: 1, 4: 3, 5: 4, 6: 3, 7: 6
-        })
+            crossovered = nn_crossover(*l, architecture={
+                # Automate ?
+                0: None, 1: 0, 2: 1, 3: 0, 4: 1
+            })
 
-        count = 0
-        for layer_name, weights in parents[0].items():
-            if 'core' in layer_name:
-                for sub_layer_i in range(len(weights)):
-                    weights[sub_layer_i][0][:] = crossovered[count][:-1]
-                    weights[sub_layer_i][1][:] = crossovered[count][-1]
-                    count += 1
-            else:
-                if 'lstm' in layer_name:
-                    print(weights[0].shape)
-                    weights[0][:, :weights[0].shape[1] * 3 // 4] = crossovered[count][:-1]
-                    weights[-1][:weights[0].shape[1] * 3 // 4] = crossovered[count][-1]
-                    count += 1
-                    weights[0][:, weights[0].shape[1] * 3 // 4:] = crossovered[count][:-1]
-                    weights[-1][weights[0].shape[1] * 3 // 4:] = crossovered[count][-1]
-                    count += 1
-                    weights[1][:] = crossovered[count]
-                    count += 1
-
-                else:
-                    weights[0][:] = crossovered[count][:-1]
-                    weights[1][:] = crossovered[count][-1]
-                    count += 1
+            count = 0
+            for layer_name, weights in parents[0].items():
+                if 'lstm' not in layer_name:
+                    if 'core' in layer_name:
+                        for sub_layer_i in range(len(weights)):
+                            weights[sub_layer_i][0][:] = crossovered[count][:-1]
+                            weights[sub_layer_i][1][:] = crossovered[count][-1]
+                            count += 1
+                    else:
+                        weights[0][:] = crossovered[count][:-1]
+                        weights[1][:] = crossovered[count][-1]
+                        count += 1
 
         self.set_training_params(parents[0])

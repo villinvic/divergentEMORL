@@ -24,9 +24,22 @@ def bc_coef(a, b):
 def bc_distance(a, b):
     return np.mean(-np.log(bc_coef(a, b)+1e-8))
 
-def policy_similarity(a, b, l=1, func=bc_distance):
-    return np.exp(-func(a, b)**2/(2 * l ** 2))
+def norm(a, b):
+    return np.linalg.norm(a-b)
 
+def diff(a, b):
+    return np.sum(a - b, axis=-1)
+
+def normalize(x, exclude=0, clip=1):
+    return np.clip((x - np.mean(x[exclude:], axis=0))/(np.std(x[exclude:], axis=0)+1e-8),-clip, clip)
+
+def policy_similarity(a, b, l=1, func=diff):
+    return np.exp(-func(a, b)**2 / (2 * l ** 2))
+
+def rbf_kernel(embeddings, l):
+    left = tf.broadcast_to(tf.expand_dims(embeddings, axis=0), (embeddings.shape[0], *embeddings.shape))
+    right = tf.broadcast_to(tf.expand_dims(embeddings, axis=1), (embeddings.shape[0], *embeddings.shape))
+    return tf.exp(- tf.reduce_sum(tf.square(left - right), axis=-1) / ( 2. * l ** 2))
 
 def nn_crossover(a, b, architecture={}):
     pairs = [pairwise_cross_corr(ax, bx) for ax,bx in zip(a,b)]
@@ -117,23 +130,42 @@ def safe_crossover(ax, bx):
     return (1-t) * ax + t * bx
 
 
-class WinRatios:
-    def __init__(self, size):
-        self.perfs = np.zeros((size,2), dtype=np.float32)
-
-    def update(self, a, b, outcome):
-        if outcome > 0:
-            self.perfs[a][0] += 1
-            self.perfs[b][1] += 1
+class MovingAverage:
+    def __init__(self, length, last_k=None):
+        if last_k is None:
+            self.last_k = int(length * 0.33)
         else:
-            self.perfs[a][1] += 1
-            self.perfs[b][0] += 1
+            self.last_k = last_k
 
-    def compute(self):
-        return self.perfs[:, 0] / np.sum(self.perfs, axis=1)
+        self.length = length
+        self.trend_count = 0
+        self.index = 0
+        self.values = np.full((length,), np.nan, dtype=np.float32)
+        self.moving_avg = np.full((length,), np.nan, dtype=np.float32)
+
+    def __call__(self):
+        return self.moving_avg[(self.index-1)%self.length]
+
+    def push(self, x):
+        self.values[self.index % self.length] = x
+        self.moving_avg[self.index % self.length] = np.nanmean(self.values)
+        self.index += 1
+        if self.index > self.last_k:
+            trend = np.sign(self.trend())
+            if trend != np.sign(self.trend_count):
+                self.trend_count = 0
+            self.trend_count += trend
 
     def reset(self):
-        self.perfs[:] = 0.
+        self.__init__(self.length)
+
+    def trend(self):
+        indexes = np.arange(self.last_k)
+        values = self.values.take(np.arange((self.index%self.length)-self.last_k, self.index%self.length), mode='wrap')
+        args = np.argwhere(np.logical_not(np.isnan(values))).flatten()
+        return np.float32(np.polyfit(indexes[args], values[args], 1)[-2])
+
+
 
 
 if __name__ == '__main__':
@@ -150,24 +182,54 @@ if __name__ == '__main__':
         tf.config.experimental.set_memory_growth(gpu, True)
     tf.summary.experimental.set_step(0)
 
-    s = np.random.random((256, 80, 100))
-    a = Individual(0, 100, 32, [], trainable=True)
+    s = np.random.random((1, 80, 100))
+    for i in range(80):
+        s[0, i] += s[0,0] + np.random.random(100) * 0.01
+    a = Individual(0, 100, 10, [], trainable=True)
     a_w = a.genotype['brain'].get_training_params()
-    a_w['actor_core'][0][0][::15] += np.random.random(a_w['actor_core'][0][0][::15].shape)*0.9
+    a_w['actor_core'][0][0][::15] += np.random.random(a_w['actor_core'][0][0][::15].shape)*0.5
     a_w['actor_core'][0][1][::3] -= np.random.random(a_w['actor_core'][0][1][::3].shape) *0.6
     a.genotype['brain'].set_training_params(a_w)
-    b = Individual(0, 100, 32, [], trainable=True)
-    c = Individual(0, 100, 32, [], trainable=True)
+    b = Individual(0,  100, 10, [], trainable=True)
+    b_w = b.genotype['brain'].get_training_params()
+    b_w['actor_core'][0][0][::10] += np.random.random(b_w['actor_core'][0][0][::10].shape)**2 * 0.1
+    b.genotype['brain'].set_training_params(b_w)
+    c = Individual(0, 100, 10, [], trainable=True)
+    c_w = c.genotype['brain'].get_training_params()
+    c_w['actor_core'][0][0][::11] += -np.random.random(c_w['actor_core'][0][0][::11].shape) * 2
+    b.genotype['brain'].set_training_params(b_w)
+    d = Individual(0, 100, 10, [], trainable=True)
+    d_w = b.genotype['brain'].get_training_params()
+    d_w['actor_core'][0][0][::18] += np.random.normal(0, 1, d_w['actor_core'][0][0][::18].shape) * 0.99
+    d_w['actor_core'][0][1][::2] -= np.random.normal(0,1, d_w['actor_core'][0][1][::2].shape) * 0.6
+    d.genotype['brain'].set_training_params(d_w)
+    e = Individual(0, 100, 10, [], trainable=True)
+    e_w = b.genotype['brain'].get_training_params()
+    e_w['actor_core'][0][0][::3] += -np.random.random(e_w['actor_core'][0][0][::3].shape) ** 3
+    e_w['actor_core'][0][1][::3] -= np.random.random(e_w['actor_core'][0][1][::3].shape) * 0.6
+    b.genotype['brain'].set_training_params(e_w)
+    c.inerit_from(a,b)
+    pop = [a,b,c,d,e]
+    embeddings = np.empty((len(pop), 80, 10))
+    for i, ind in enumerate(pop):
+        embeddings[i,: ]= ind.genotype['brain'].policy.get_probs(a.genotype['brain'].dense_1(s))
 
-    c.inerit_from(a, b)
-    a_out = a.genotype['brain'].policy.get_probs(a.genotype['brain'].dense_1(a.genotype['brain'].lstm(s)))
-    b_out = b.genotype['brain'].policy.get_probs(b.genotype['brain'].dense_1(b.genotype['brain'].lstm(s)))
-    c_out = c.genotype['brain'].policy.get_probs(c.genotype['brain'].dense_1(c.genotype['brain'].lstm(s)))
+    embeddings[:] = normalize(embeddings)
 
-    for i, one in enumerate([a_out, b_out, c_out]):
-        for j, two in enumerate([a_out, b_out, c_out]):
+
+    for i, one in enumerate(embeddings):
+        for j, two in enumerate(embeddings):
             if i != j and i < j:
-                print((i, j), policy_similarity(one, two, 3, func=kl_divergence), policy_similarity(one, two, l=3, func=bc_distance))
+                print((i, j), policy_similarity(one, two, 30))
+
+    k = np.empty((len(pop),len(pop)), dtype=np.float32)
+    for i in range(len(pop)):
+        for j in range(len(pop)):
+            k[i, j] = policy_similarity(embeddings[i], embeddings[j], 30)
+
+    print(np.linalg.det(k))
+    for i in range(len(pop)):
+        print(i, 1-np.linalg.det(np.delete(np.delete(k, i, axis=0), i , axis=1)))
 
 
 

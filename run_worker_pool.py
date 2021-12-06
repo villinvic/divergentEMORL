@@ -11,15 +11,22 @@ def run_many(n_arenas=1,
              hub_ip='localhost',
              restart_freq=60 * 60,
              render=True,
+             ma=False,
              ssh=False):
     if ssh:
         psw = getpass.getpass("Server Password: ")
     else:
         psw = '""'
 
-    cmd = "python3 EMORL/Worker.py " \
-          "--render={render} "\
-          "--hub_ip={hub_ip} "
+    if ma :
+        cmd = "python3 EMORLMA/Worker.py " \
+              "--render={render} " \
+              "--hub_ip={hub_ip} "
+    else:
+
+        cmd = "python3 EMORL/Worker.py " \
+              "--render={render} "\
+              "--hub_ip={hub_ip} "
 
     if hub_ip is None:
         hub_ip = '127.0.0.1'
