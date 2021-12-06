@@ -60,6 +60,8 @@ class Hub(Default, Logger):
 
         c = zmq.Context()
         self.blob_socket = c.socket(zmq.REP)
+        self.blob_socket.setsockopt(zmq.RCVTIMEO, 200)
+        self.blob_socket.setsockopt(zmq.LINGER, 0)
         self.blob_socket.bind("tcp://%s:%d" % (ip, self.PARAM_PORT))
         self.exp_socket = c.socket(zmq.PULL)
         self.exp_socket.bind("tcp://%s:%d" % (ip, self.EXP_PORT))
