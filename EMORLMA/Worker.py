@@ -52,6 +52,8 @@ class Worker(Default):
     @zmq.decorators.socket(zmq.REQ)
     def request_match(self, socket, last_match_result=None):
         socket.connect("tcp://%s:%d" % (self.hub_ip, self.PARAM_PORT))
+        socket.setsockopt(zmq.RCVTIMEO, 5000)
+        socket.setsockopt(zmq.LINGER, 0)
         try:
             socket.send_pyobj((last_match_result, self.player_ids))
             params, player_ids = socket.recv_pyobj()
@@ -122,6 +124,7 @@ class Worker(Default):
             c += 1
             print(last_match_result, c)
             while not self.request_match(last_match_result=last_match_result):
+                print(c, 'stuck ?')
                 pass
 
 
