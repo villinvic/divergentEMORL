@@ -108,7 +108,7 @@ class Worker(Default):
 
 
     def __call__(self):
-        for _ in range(10):
+        for _ in range(0):
             x = self.request_match(None)
             if x :
                 break

@@ -31,7 +31,7 @@ class BoxingMA:
             [0.05, 0.05, 0.05, 0.05, 0.01, 0.01, 0.014, 0.014, 0.014, 0.004, 0.004, 0.004, 0.004, 0.004, 0.5],
             dtype=np.float32)
         self.index_permut = np.array([2,3,0,1,5,4,8,9,6,7,12,13,10,11,14], dtype=np.int32)
-        self.action_dim = 10
+        self.action_dim = 16
         self.state_dim_base = len(self.indexes)
         self.state_dim_actions = len(self.indexes) + self.action_dim
 
@@ -56,9 +56,6 @@ class BoxingMA:
         self.state[:] = np.tile(self.start_state, framestack)
 
         self.state_dim = len(self.state)
-
-        self.actions = np.arange(10)
-        self.act_index = 0
 
 
     def action_to_id(self, actions):
