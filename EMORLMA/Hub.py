@@ -1,5 +1,4 @@
 import zmq
-import pickle
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -60,7 +59,7 @@ class Hub(Default, Logger):
             #Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.max_see, dummy_env.view_range)
 
         c = zmq.Context()
-        self.blob_socket = c.socket(zmq.PUB)
+        self.blob_socket = c.socket(zmq.REP)
         self.blob_socket.bind("tcp://%s:%d" % (ip, self.PARAM_PORT))
         self.exp_socket = c.socket(zmq.PULL)
         self.exp_socket.bind("tcp://%s:%d" % (ip, self.EXP_PORT))
@@ -98,25 +97,7 @@ class Hub(Default, Logger):
         received = 0
         try:
             while True:
-                data = self.exp_socket.recv_pyobj(zmq.NOBLOCK)
-                self.exp.extend(data['trajectory'])
-
-                if 'match_result' in data:
-                    self.logger.info(data['match_result'])
-                    result, p1, p2 = data['match_result']
-                    if p1 < self.pop_size:
-                        p1 = self.population[p1]
-                    else:
-                        p1 = self.offspring_pool[p1 - self.pop_size]
-                    if p2 < self.pop_size:
-                        p2 = self.population[p2]
-                    else:
-                        p2 = self.offspring_pool[p2 - self.pop_size]
-
-                    outcome = result > 0
-                    p1.elo.update(p1.elo(), p2.elo(), np.float32(outcome))
-                    p2.elo.update(p2.elo(), p1.elo(), np.float32(not outcome))
-
+                self.exp.append(self.exp_socket.recv_pyobj(zmq.NOBLOCK))
                 received += 1
         except zmq.ZMQError:
             pass
@@ -124,17 +105,35 @@ class Hub(Default, Logger):
             self.logger.info('exp waiting: %d ' % len(self.exp))
         self.rcved += received
 
-    def pub_params(self, include_pop=False):
+    def handle_requests(self, index):
         try:
-            params = dict(trained=self.offspring_pool[0].get_arena_genes())
-            if include_pop:
-                params.update({
-                i: p.get_arena_genes() for i,p in enumerate(self.population)
-                })
-            self.blob_socket.send_pyobj(params)
+            match_result, player_ids = self.blob_socket.recv_pyobj(zmq.NOBLOCK)
+            self.logger.info((match_result, player_ids))
+            if match_result is not None:
+                if player_ids[0] < self.pop_size:
+                    p1 = self.population[player_ids[0]]
+                else:
+                    p1 = self.offspring_pool[player_ids[0]-self.pop_size]
+                if player_ids[1] < self.pop_size:
+                    p2 = self.population[player_ids[1]]
+                else:
+                    p2 = self.offspring_pool[player_ids[1] - self.pop_size]
 
-        except zmq.ZMQError as e:
-            print(e)
+                outcome = match_result > 0
+                p1.elo.update(p1.elo(), p2.elo(), np.float32(outcome))
+                p2.elo.update(p2.elo(), p1.elo(), np.float32(not outcome))
+
+            matched = [index + self.pop_size, self.matchmaking(index)]
+            np.random.shuffle(matched)
+            if matched[0] >= self.pop_size:
+                players = [self.offspring_pool[matched[0] - self.pop_size].get_arena_genes(),
+                           self.population[matched[1]].get_arena_genes()]
+            else:
+                players = [self.population[matched[0]].get_arena_genes(),
+                           self.offspring_pool[matched[1] - self.pop_size].get_arena_genes()]
+            self.blob_socket.send_pyobj((players, matched))
+        except zmq.ZMQError:
+            pass
 
     def matchmaking(self, against):
         # random matchmaking policy
@@ -255,23 +254,17 @@ class Hub(Default, Logger):
     def train_offspring(self):
         # Train each individuals for x minutes, 1 by 1, on the trainer (can be the Hub, with GPU)
         # empty queue
-        self.pub_params(include_pop=True)
         for index in range(self.n_offspring):
             self.logger.info('Training offspring n°%d...' % index)
             start_time = time()
-            last_pub_time = time()
             for _ in range(6):
                 self.recv_training_data()
             del self.exp[:]
             excluded = np.random.choice(self.pop_size)
             while time() - start_time < self.train_time:
+                self.handle_requests(index)
                 self.recv_training_data()
                 self.train(index, excluded)
-                current = time()
-                if current - last_pub_time > 5:
-                    self.pub_params()
-                    last_pub_time = time()
-
 
     def compute_embeddings(self):
         index = 0

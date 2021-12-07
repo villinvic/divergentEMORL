@@ -7,7 +7,6 @@ import zmq
 import zmq.decorators
 import time
 import signal
-import pickle
 
 from config.Loader import Default
 #from Game.core import Game
@@ -24,13 +23,8 @@ class Worker(Default):
         self.game = Game(render=render, frameskip=self.frameskip)
         self.players = (Individual(-1, self.game.state_dim, self.game.action_dim, []),
                         Individual(-1, self.game.state_dim, self.game.action_dim, []))
-        self.trained_params = (20, self.players[0].get_arena_genes())
-        self.opponent_params = [(0, self.players[1].get_arena_genes()) for _ in range(5)]
         #self.player = Individual(-1, self.game.env.observation_space.shape[0], self.game.env.action_space.shape[0], [])
         c = zmq.Context()
-        self.blob_socket = c.socket(zmq.SUB)
-        self.blob_socket.subscribe(b'')
-        self.blob_socket.connect("tcp://%s:%d" % (self.hub_ip, self.PARAM_PORT))
         self.exp_socket = c.socket(zmq.PUSH)
         self.exp_socket.connect("tcp://%s:%d" % (hub_ip, self.EXP_PORT))
         self.player_ids = np.zeros(2, dtype=np.int32)
@@ -55,37 +49,30 @@ class Worker(Default):
 
         signal.signal(signal.SIGINT, lambda frame, signal : sys.exit())
 
-    def recv_params(self):
+    @zmq.decorators.socket(zmq.REQ)
+    def request_match(self, socket, last_match_result=None):
+        socket.connect("tcp://%s:%d" % (self.hub_ip, self.PARAM_PORT))
+        socket.setsockopt(zmq.RCVTIMEO, 50000)
+        socket.setsockopt(zmq.LINGER, 0)
         try:
-            params = self.blob_socket.recv_pyobj(zmq.NOBLOCK)
-            self.trained_params = (20, params['trained'])
-            params.pop('trained')
-            if len(params) > 0:
-                print('rcved opponents !')
-                opponents = np.random.choice(len(params), len(self.opponent_params), replace=False)
-                for i in range(len(self.opponent_params)):
-                    self.opponent_params[i] = (opponents[i], params[opponents[i]])
+            socket.send_pyobj((last_match_result, self.player_ids))
+            params, player_ids = socket.recv_pyobj()
+            for param, player in zip(params, self.players):
+                player.set_arena_genes(param)
+            for i, player_id in enumerate(player_ids):
+                self.trajectory[i]['player_id'] = player_id
+            self.player_ids[:] = player_ids
         except zmq.ZMQError as e:
+            print(e)
             return False
 
         return True
 
-    def matchmaking(self):
-        match = [self.trained_params, self.opponent_params[np.random.choice(len(self.opponent_params))]]
-        np.random.shuffle(match)
-        self.player_ids[:] = match[0][0], match[1][0]
-        self.trajectory[0]['player_id'] = match[0][0]
-        self.trajectory[1]['player_id'] = match[1][0]
-        for i, p in enumerate(self.players):
-            p.set_arena_genes(match[i][1])
+    def send_exp(self):
+        self.exp_socket.send_pyobj(self.trajectory[0])
+        self.exp_socket.send_pyobj(self.trajectory[1])
 
-    def send_exp(self, match_result=None):
-        data = dict(trajectory=self.trajectory)
-        if match_result is not None:
-            data['match_result'] = (match_result, *self.player_ids)
-        self.exp_socket.send_pyobj(data)
         # TODO LSTM hidden state update
-        self.recv_params()
 
     def play_match(self):
         done = False
@@ -106,16 +93,14 @@ class Worker(Default):
             self.trajectory[1]['win'][index % self.TRAJECTORY_LENGTH] = -win
 
             index += 1
-            if index > 5000:
-                print(self.game.state[-1])
-            if not done and index % self.TRAJECTORY_LENGTH == 0:
+            if index % self.TRAJECTORY_LENGTH == 0:
                 self.send_exp()
         if index % self.TRAJECTORY_LENGTH != 0:
             for player_index in range(2):
                 self.trajectory[player_index]['state'][index % self.TRAJECTORY_LENGTH:, :] =\
                     self.trajectory[player_index]['state'][index % self.TRAJECTORY_LENGTH-1, :]
                 self.trajectory[player_index]['win'][index % self.TRAJECTORY_LENGTH:] = 0.
-        self.send_exp(match_result=win)
+            self.send_exp()
 
         self.game.reset()
         for p in self.players:
@@ -126,8 +111,8 @@ class Worker(Default):
 
 
     def __call__(self):
-        for _ in range(20):
-            x = self.recv_params()
+        for _ in range(10):
+            x = self.request_match(last_match_result=None)
             if x :
                 break
             time.sleep(1)
@@ -135,10 +120,12 @@ class Worker(Default):
         print('LETS GO')
         c = 0
         while True:
-            self.matchmaking()
             last_match_result = self.play_match()
             c += 1
             print(last_match_result, c)
+            while not self.request_match(last_match_result=last_match_result):
+                print(c, 'stuck ?')
+                pass
 
 
 if __name__ == '__main__':

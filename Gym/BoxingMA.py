@@ -109,6 +109,7 @@ class BoxingMA:
         self.update_opp_state()
 
         if self.state[-1] < 0.01:
+            print(self.state)
             done = True
 
         return done, win
