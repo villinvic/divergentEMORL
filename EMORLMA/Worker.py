@@ -62,7 +62,7 @@ class Worker(Default):
             params.pop('trained')
             if len(params) > 0:
                 print('rcved opponents !')
-                opponents = np.random.choice(len(params), len(self.opponent_params))
+                opponents = np.random.choice(len(params), len(self.opponent_params), replace=False)
                 for i in range(len(self.opponent_params)):
                     self.opponent_params[i] = (opponents[i], params[opponents[i]])
         except zmq.ZMQError as e:
