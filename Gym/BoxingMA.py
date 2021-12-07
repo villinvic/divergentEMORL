@@ -43,6 +43,8 @@ class BoxingMA:
         self.seconds = 17
         self.frames = 20
 
+        self.step_index = 0
+
         self.state = np.zeros(self.state_dim_actions * framestack)
         self.opp_state = np.zeros_like(self.state)
 
@@ -100,6 +102,10 @@ class BoxingMA:
             observation, rr, done, info = self.env.step(actions)
             #reward += rr
         observation = self.preprocess(observation)
+
+        if self.step_index > 10 and all(self.state[:self.state_dim_base] ==
+                                        self.state[self.state_dim_actions:self.state_dim_actions + self.state_dim_base]):
+            done = True
         win = self.win(done, observation)
         self.state[self.state_dim_actions:] = self.state[:-self.state_dim_actions]
         self.opp_state[self.state_dim_actions:] = self.opp_state[:-self.state_dim_actions]
@@ -107,6 +113,8 @@ class BoxingMA:
         self.state[self.state_dim_base:self.state_dim_actions] = 0.
         self.state[self.state_dim_base+self.past_action[0]] = 1.
         self.update_opp_state()
+
+        self.step_index += 1
 
         return done, win
 
@@ -116,6 +124,7 @@ class BoxingMA:
         self.opp_state[:] = np.tile(self.opp_start_state, self.framestack)
         #self.update_opp_state()
         self.past_action = [0,0]
+        self.step_index = 0
 
     def render(self):
         time.sleep(0.04)
