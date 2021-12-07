@@ -289,9 +289,9 @@ class Hub(Default, Logger):
         index = 0
         for i, pop in enumerate([self.population, self.offspring_pool]):
             for individual in pop:
-                if i == 1 and (individual.performance < np.min(self.perf_and_uniqueness[0, :-self.n_offspring, 0])):
-                    self.perf_and_uniqueness[0, index, 0] = self.bad_score
-                    individual.performance = self.bad_score
+                if i == 1 and (individual.elo() < np.min(self.perf_and_uniqueness[0, :-self.n_offspring, 0])):
+                    self.perf_and_uniqueness[0, index, 0] = 0
+                    individual.performance = 0
                     self.perf_and_uniqueness[1, index, 0] = 0
                 else:
                     self.perf_and_uniqueness[0, index, 0] = individual.elo()
