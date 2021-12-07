@@ -64,7 +64,7 @@ class Worker(Default):
                 print('rcved opponents !')
                 opponents = np.random.choice(len(params), len(self.opponent_params))
                 for i in range(len(self.opponent_params)):
-                    self.opponent_params[i] = (i, params[opponents[i]])
+                    self.opponent_params[i] = (opponents[i], params[opponents[i]])
         except zmq.ZMQError as e:
             return False
 
@@ -85,6 +85,7 @@ class Worker(Default):
             data['match_result'] = (match_result, *self.player_ids)
         self.exp_socket.send_pyobj(data)
         # TODO LSTM hidden state update
+        self.recv_params()
 
     def play_match(self):
         done = False
@@ -136,9 +137,6 @@ class Worker(Default):
             last_match_result = self.play_match()
             c += 1
             print(last_match_result, c)
-            while not self.recv_params():
-                print(c, 'stuck ?')
-                pass
 
 
 if __name__ == '__main__':
