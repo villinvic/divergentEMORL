@@ -108,6 +108,9 @@ class BoxingMA:
         self.state[self.state_dim_base+self.past_action[0]] = 1.
         self.update_opp_state()
 
+        if self.state[-1] < 0.01:
+            done = True
+
         return done, win
 
     def reset(self):

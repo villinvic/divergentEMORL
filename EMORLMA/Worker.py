@@ -106,8 +106,6 @@ class Worker(Default):
             self.trajectory[1]['win'][index % self.TRAJECTORY_LENGTH] = -win
 
             index += 1
-            if self.game.state[-1] == 0:
-                done = True
             if index > 5000:
                 print(self.game.state[-1])
             if not done and index % self.TRAJECTORY_LENGTH == 0:
