@@ -93,6 +93,9 @@ class Worker(Default):
             self.trajectory[1]['win'][index % self.TRAJECTORY_LENGTH] = -win
 
             index += 1
+            if index > 5000:
+                print(self.game.state[self.game.state_dim_base-1])
+
             if index % self.TRAJECTORY_LENGTH == 0:
                 self.send_exp()
         if index % self.TRAJECTORY_LENGTH != 0:
