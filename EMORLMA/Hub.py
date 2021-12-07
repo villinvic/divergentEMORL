@@ -60,9 +60,7 @@ class Hub(Default, Logger):
             #Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.max_see, dummy_env.view_range)
 
         c = zmq.Context()
-        self.blob_socket = c.socket(zmq.ROUTER)
-        self.poller = zmq.Poller()
-        self.poller.register(self.blob_socket, zmq.POLLIN)
+        self.blob_socket = c.socket(zmq.PUB)
         self.blob_socket.bind("tcp://%s:%d" % (ip, self.PARAM_PORT))
         self.exp_socket = c.socket(zmq.PULL)
         self.exp_socket.bind("tcp://%s:%d" % (ip, self.EXP_PORT))
@@ -100,7 +98,24 @@ class Hub(Default, Logger):
         received = 0
         try:
             while True:
-                self.exp.append(self.exp_socket.recv_pyobj(zmq.NOBLOCK))
+                data = self.exp_socket.recv_pyobj(zmq.NOBLOCK)
+                self.exp.extend(data['trajectory'])
+
+                if 'match_result' in data:
+                    result, p1, p2 = data['match_result']
+                    if p1 < self.pop_size:
+                        p1 = self.population[p1]
+                    else:
+                        p1 = self.offspring_pool[p1 - self.pop_size]
+                    if p2 < self.pop_size:
+                        p2 = self.population[p2]
+                    else:
+                        p2 = self.offspring_pool[p2 - self.pop_size]
+
+                    outcome = result > 0
+                    p1.elo.update(p1.elo(), p2.elo(), np.float32(outcome))
+                    p2.elo.update(p2.elo(), p1.elo(), np.float32(not outcome))
+
                 received += 1
         except zmq.ZMQError:
             pass
@@ -110,40 +125,17 @@ class Hub(Default, Logger):
 
     def handle_requests(self, index):
         try:
-            items = dict(self.poller.poll(50))
-        except zmq.ZMQError:
-            pass
-        if self.blob_socket in items:
-            try:
-                me, empty, match_result, p1, p2 = self.blob_socket.recv_multipart()
-                player_ids = int(p1.decode()), int(p2.decode())
-                match_result = float(match_result.decode())
-                self.logger.info((match_result, player_ids))
-                if match_result != 123:
-                    if player_ids[0] < self.pop_size:
-                        p1 = self.population[player_ids[0]]
-                    else:
-                        p1 = self.offspring_pool[player_ids[0]-self.pop_size]
-                    if player_ids[1] < self.pop_size:
-                        p2 = self.population[player_ids[1]]
-                    else:
-                        p2 = self.offspring_pool[player_ids[1] - self.pop_size]
-
-                    outcome = match_result > 0
-                    p1.elo.update(p1.elo(), p2.elo(), np.float32(outcome))
-                    p2.elo.update(p2.elo(), p1.elo(), np.float32(not outcome))
-
-                matched = [index + self.pop_size, self.matchmaking(index)]
-                np.random.shuffle(matched)
-                if matched[0] >= self.pop_size:
-                    players = [self.offspring_pool[matched[0] - self.pop_size].get_arena_genes(),
-                               self.population[matched[1]].get_arena_genes()]
-                else:
-                    players = [self.population[matched[0]].get_arena_genes(),
-                               self.offspring_pool[matched[1] - self.pop_size].get_arena_genes()]
-                self.blob_socket.send_multipart([me, empty]+[str(m).encode() for m in matched] + [pickle.dumps(p) for p in players])
-            except zmq.ZMQError as e:
-                print(e)
+            matched = [index + self.pop_size, self.matchmaking(index)]
+            np.random.shuffle(matched)
+            if matched[0] >= self.pop_size:
+                players = [self.offspring_pool[matched[0] - self.pop_size].get_arena_genes(),
+                           self.population[matched[1]].get_arena_genes()]
+            else:
+                players = [self.population[matched[0]].get_arena_genes(),
+                           self.offspring_pool[matched[1] - self.pop_size].get_arena_genes()]
+            self.blob_socket.send_pyobj((matched, players))
+        except zmq.ZMQError as e:
+            print(e)
 
     def matchmaking(self, against):
         # random matchmaking policy

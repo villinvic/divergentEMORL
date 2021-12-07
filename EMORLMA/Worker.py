@@ -50,16 +50,14 @@ class Worker(Default):
 
         signal.signal(signal.SIGINT, lambda frame, signal : sys.exit())
 
-    @zmq.decorators.socket(zmq.REQ)
-    def request_match(self, socket, last_match_result=123):
+    @zmq.decorators.socket(zmq.SUB)
+    def request_match(self, socket):
         socket.connect("tcp://%s:%d" % (self.hub_ip, self.PARAM_PORT))
-        #socket.setsockopt(zmq.RCVTIMEO, 50000)
-        #socket.setsockopt(zmq.LINGER, 0)
+        socket.subscribe(b'')
+        socket.setsockopt(zmq.RCVTIMEO, 50000)
+        socket.setsockopt(zmq.LINGER, 0)
         try:
-            socket.send_multipart([str(last_match_result).encode()] + list([str(p).encode() for p in self.player_ids]))
-            p1, p2, param1, param2 = socket.recv_multipart()
-            player_ids = int(p1.decode()), int(p2.decode())
-            params = [pickle.loads(param1), pickle.loads(param2)]
+            player_ids, params = socket.recv_pyobj()
             for param, player in zip(params, self.players):
                 player.set_arena_genes(param)
             for i, player_id in enumerate(player_ids):
@@ -71,10 +69,11 @@ class Worker(Default):
 
         return True
 
-    def send_exp(self):
-        self.exp_socket.send_pyobj(self.trajectory[0])
-        self.exp_socket.send_pyobj(self.trajectory[1])
-
+    def send_exp(self, match_result=None):
+        data = dict(trajectory=self.trajectory)
+        if match_result is not None:
+            data['match_result'] = (match_result, *self.player_ids)
+        self.exp_socket.send_pyobj(data)
         # TODO LSTM hidden state update
 
     def play_match(self):
@@ -96,14 +95,14 @@ class Worker(Default):
             self.trajectory[1]['win'][index % self.TRAJECTORY_LENGTH] = -win
 
             index += 1
-            if index % self.TRAJECTORY_LENGTH == 0:
+            if not done and index % self.TRAJECTORY_LENGTH == 0:
                 self.send_exp()
         if index % self.TRAJECTORY_LENGTH != 0:
             for player_index in range(2):
                 self.trajectory[player_index]['state'][index % self.TRAJECTORY_LENGTH:, :] =\
                     self.trajectory[player_index]['state'][index % self.TRAJECTORY_LENGTH-1, :]
                 self.trajectory[player_index]['win'][index % self.TRAJECTORY_LENGTH:] = 0.
-            self.send_exp()
+        self.send_exp(match_result=win)
 
         self.game.reset()
         for p in self.players:
