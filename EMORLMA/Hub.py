@@ -102,6 +102,7 @@ class Hub(Default, Logger):
                 self.exp.extend(data['trajectory'])
 
                 if 'match_result' in data:
+                    self.logger.info(data['match_result'])
                     result, p1, p2 = data['match_result']
                     if p1 < self.pop_size:
                         p1 = self.population[p1]
@@ -123,17 +124,15 @@ class Hub(Default, Logger):
             self.logger.info('exp waiting: %d ' % len(self.exp))
         self.rcved += received
 
-    def pub_match(self, index):
+    def pub_params(self, include_pop=False):
         try:
-            matched = [index + self.pop_size, self.matchmaking(index)]
-            np.random.shuffle(matched)
-            if matched[0] >= self.pop_size:
-                players = [self.offspring_pool[matched[0] - self.pop_size].get_arena_genes(),
-                           self.population[matched[1]].get_arena_genes()]
-            else:
-                players = [self.population[matched[0]].get_arena_genes(),
-                           self.offspring_pool[matched[1] - self.pop_size].get_arena_genes()]
-            self.blob_socket.send_pyobj((matched, players))
+            params = dict(trained=self.offspring_pool[0].get_arena_genes())
+            if include_pop:
+                params.update({
+                i: p.get_arena_genes() for i,p in enumerate(self.population)
+                })
+            self.blob_socket.send_pyobj(params)
+
         except zmq.ZMQError as e:
             print(e)
 
@@ -256,10 +255,10 @@ class Hub(Default, Logger):
     def train_offspring(self):
         # Train each individuals for x minutes, 1 by 1, on the trainer (can be the Hub, with GPU)
         # empty queue
+        self.pub_params(include_pop=True)
         for index in range(self.n_offspring):
             self.logger.info('Training offspring n°%d...' % index)
             start_time = time()
-            self.pub_match(index)
             last_pub_time = time()
             for _ in range(6):
                 self.recv_training_data()
@@ -269,8 +268,8 @@ class Hub(Default, Logger):
                 self.recv_training_data()
                 self.train(index, excluded)
                 current = time()
-                if current - last_pub_time > 6:
-                    self.pub_match(index)
+                if current - last_pub_time > 5:
+                    self.pub_params()
                     last_pub_time = time()
 
 
