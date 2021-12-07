@@ -1,4 +1,5 @@
 import zmq
+import pickle
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -59,7 +60,7 @@ class Hub(Default, Logger):
             #Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.max_see, dummy_env.view_range)
 
         c = zmq.Context()
-        self.blob_socket = c.socket(zmq.REP)
+        self.blob_socket = c.socket(zmq.ROUTER)
         self.poller = zmq.Poller()
         self.poller.register(self.blob_socket, zmq.POLLIN)
         self.blob_socket.bind("tcp://%s:%d" % (ip, self.PARAM_PORT))
@@ -114,9 +115,11 @@ class Hub(Default, Logger):
             pass
         if self.blob_socket in items:
             try:
-                match_result, player_ids = self.blob_socket.recv_pyobj()
+                me, empty, match_result, p1, p2 = self.blob_socket.recv_multipart()
+                player_ids = int(p1.decode()), int(p2.decode())
+                match_result = float(match_result.decode())
                 self.logger.info((match_result, player_ids))
-                if match_result is not None:
+                if match_result != 123:
                     if player_ids[0] < self.pop_size:
                         p1 = self.population[player_ids[0]]
                     else:
@@ -138,9 +141,9 @@ class Hub(Default, Logger):
                 else:
                     players = [self.population[matched[0]].get_arena_genes(),
                                self.offspring_pool[matched[1] - self.pop_size].get_arena_genes()]
-                self.blob_socket.send_pyobj((players, matched))
-            except zmq.ZMQError:
-                pass
+                self.blob_socket.send_multipart([me, empty]+[str(m).encode() for m in matched] + [pickle.dumps(p) for p in players])
+            except zmq.ZMQError as e:
+                print(e)
 
     def matchmaking(self, against):
         # random matchmaking policy

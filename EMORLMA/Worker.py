@@ -7,6 +7,7 @@ import zmq
 import zmq.decorators
 import time
 import signal
+import pickle
 
 from config.Loader import Default
 #from Game.core import Game
@@ -50,13 +51,15 @@ class Worker(Default):
         signal.signal(signal.SIGINT, lambda frame, signal : sys.exit())
 
     @zmq.decorators.socket(zmq.REQ)
-    def request_match(self, socket, last_match_result=None):
+    def request_match(self, socket, last_match_result=123):
         socket.connect("tcp://%s:%d" % (self.hub_ip, self.PARAM_PORT))
-        socket.setsockopt(zmq.RCVTIMEO, 50000)
-        socket.setsockopt(zmq.LINGER, 0)
+        #socket.setsockopt(zmq.RCVTIMEO, 50000)
+        #socket.setsockopt(zmq.LINGER, 0)
         try:
-            socket.send_pyobj((last_match_result, self.player_ids))
-            params, player_ids = socket.recv_pyobj()
+            socket.send_multipart([str(last_match_result).encode()] + list([str(p).encode() for p in self.player_ids]))
+            p1, p2, param1, param2 = socket.recv_multipart()
+            player_ids = int(p1.decode()), int(p2.decode())
+            params = [pickle.loads(param1), pickle.loads(param2)]
             for param, player in zip(params, self.players):
                 player.set_arena_genes(param)
             for i, player_id in enumerate(player_ids):
@@ -112,7 +115,7 @@ class Worker(Default):
 
     def __call__(self):
         for _ in range(10):
-            x = self.request_match(last_match_result=None)
+            x = self.request_match()
             if x :
                 break
             time.sleep(1)
