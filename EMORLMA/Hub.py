@@ -60,8 +60,8 @@ class Hub(Default, Logger):
 
         c = zmq.Context()
         self.blob_socket = c.socket(zmq.REP)
-        self.blob_socket.setsockopt(zmq.RCVTIMEO, 200)
-        self.blob_socket.setsockopt(zmq.LINGER, 0)
+        self.poller = zmq.Poller()
+        self.poller.register(self.blob_socket, zmq.POLLIN)
         self.blob_socket.bind("tcp://%s:%d" % (ip, self.PARAM_PORT))
         self.exp_socket = c.socket(zmq.PULL)
         self.exp_socket.bind("tcp://%s:%d" % (ip, self.EXP_PORT))
@@ -109,33 +109,38 @@ class Hub(Default, Logger):
 
     def handle_requests(self, index):
         try:
-            match_result, player_ids = self.blob_socket.recv_pyobj()
-            self.logger.info((match_result, player_ids))
-            if match_result is not None:
-                if player_ids[0] < self.pop_size:
-                    p1 = self.population[player_ids[0]]
-                else:
-                    p1 = self.offspring_pool[player_ids[0]-self.pop_size]
-                if player_ids[1] < self.pop_size:
-                    p2 = self.population[player_ids[1]]
-                else:
-                    p2 = self.offspring_pool[player_ids[1] - self.pop_size]
-
-                outcome = match_result > 0
-                p1.elo.update(p1.elo(), p2.elo(), np.float32(outcome))
-                p2.elo.update(p2.elo(), p1.elo(), np.float32(not outcome))
-
-            matched = [index + self.pop_size, self.matchmaking(index)]
-            np.random.shuffle(matched)
-            if matched[0] >= self.pop_size:
-                players = [self.offspring_pool[matched[0] - self.pop_size].get_arena_genes(),
-                           self.population[matched[1]].get_arena_genes()]
-            else:
-                players = [self.population[matched[0]].get_arena_genes(),
-                           self.offspring_pool[matched[1] - self.pop_size].get_arena_genes()]
-            self.blob_socket.send_pyobj((players, matched))
+            items = dict(self.poller.poll(50))
         except zmq.ZMQError:
             pass
+        if self.blob_socket in items:
+            try:
+                match_result, player_ids = self.blob_socket.recv_pyobj()
+                self.logger.info((match_result, player_ids))
+                if match_result is not None:
+                    if player_ids[0] < self.pop_size:
+                        p1 = self.population[player_ids[0]]
+                    else:
+                        p1 = self.offspring_pool[player_ids[0]-self.pop_size]
+                    if player_ids[1] < self.pop_size:
+                        p2 = self.population[player_ids[1]]
+                    else:
+                        p2 = self.offspring_pool[player_ids[1] - self.pop_size]
+
+                    outcome = match_result > 0
+                    p1.elo.update(p1.elo(), p2.elo(), np.float32(outcome))
+                    p2.elo.update(p2.elo(), p1.elo(), np.float32(not outcome))
+
+                matched = [index + self.pop_size, self.matchmaking(index)]
+                np.random.shuffle(matched)
+                if matched[0] >= self.pop_size:
+                    players = [self.offspring_pool[matched[0] - self.pop_size].get_arena_genes(),
+                               self.population[matched[1]].get_arena_genes()]
+                else:
+                    players = [self.population[matched[0]].get_arena_genes(),
+                               self.offspring_pool[matched[1] - self.pop_size].get_arena_genes()]
+                self.blob_socket.send_pyobj((players, matched))
+            except zmq.ZMQError:
+                pass
 
     def matchmaking(self, against):
         # random matchmaking policy
