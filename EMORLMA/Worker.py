@@ -58,6 +58,7 @@ class Worker(Default):
         socket.setsockopt(zmq.LINGER, 0)
         try:
             player_ids, params = socket.recv_pyobj()
+            print('match:', player_ids)
             for param, player in zip(params, self.players):
                 player.set_arena_genes(param)
             for i, player_id in enumerate(player_ids):
@@ -125,7 +126,7 @@ class Worker(Default):
             last_match_result = self.play_match()
             c += 1
             print(last_match_result, c)
-            while not self.request_match(last_match_result=last_match_result):
+            while not self.request_match():
                 print(c, 'stuck ?')
                 pass
 

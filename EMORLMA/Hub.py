@@ -123,7 +123,7 @@ class Hub(Default, Logger):
             self.logger.info('exp waiting: %d ' % len(self.exp))
         self.rcved += received
 
-    def handle_requests(self, index):
+    def pub_match(self, index):
         try:
             matched = [index + self.pop_size, self.matchmaking(index)]
             np.random.shuffle(matched)
@@ -259,14 +259,20 @@ class Hub(Default, Logger):
         for index in range(self.n_offspring):
             self.logger.info('Training offspring n°%d...' % index)
             start_time = time()
+            self.pub_match(index)
+            last_pub_time = time()
             for _ in range(6):
                 self.recv_training_data()
             del self.exp[:]
             excluded = np.random.choice(self.pop_size)
             while time() - start_time < self.train_time:
-                self.handle_requests(index)
                 self.recv_training_data()
                 self.train(index, excluded)
+                current = time()
+                if current - last_pub_time > 6:
+                    self.pub_match(index)
+                    last_pub_time = time()
+
 
     def compute_embeddings(self):
         index = 0
