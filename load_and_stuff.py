@@ -17,7 +17,10 @@ from Gym.Boxing import Boxing as Game
 from Gym.BoxingMA import BoxingMA as GameMA
 
 
-def play_episode(game, player):
+def play_episode(game, player, opp_genes):
+    if opp_genes:
+        opp = Individual(-1, game.state_dim, game.action_dim, [])
+        opp.set_arena_genes(opp_genes)
     done = False
     idx = 0
     try:
@@ -26,7 +29,8 @@ def play_episode(game, player):
             game.render()
             action_id, distribution, hidden_h, hidden_c = player.policy(game.state)
             if isinstance(game, GameMA):
-                action_id = [action_id, (idx // 30)%16]
+                action_id_opp, _, _, _ = opp.policy(game.opp_state)
+                action_id = [action_id, action_id_opp]
             done, win = game.step(action_id)
     except KeyboardInterrupt:
         pass
@@ -37,6 +41,8 @@ def eval_behav(args):
     k, genotype, ma = args
     if ma:
         game = GameMA()
+        opp = Individual(-1, game.state_dim, game.action_dim, [])
+        opp.set_arena_genes(ma)
     else:
         game = Game()
 
@@ -57,7 +63,8 @@ def eval_behav(args):
                 state_idx += 1
                 action_id, distribution, hidden_h, hidden_c = player.policy(game.state)
                 if ma:
-                    action_id = [action_id, np.random.randint(0, game.action_dim)]
+                    action_id_opp, _, _, _ = opp.policy(game.opp_state)
+                    action_id = [action_id, action_id_opp]
                 done, win = game.step(action_id)
             if win == 1:
                 points[0] += 1
@@ -109,9 +116,11 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False):
             pprint([individual.genotype['learning'],individual.genotype['experience']])
             pprint(['performance:', individual.performance])
 
-            play_episode(game, player)
+            play_episode(game, player, opp_genes=pop[np.random.randint(pop_size)].get_arena_genes() if ma else None)
 
     def eval_pop():
+        if ma:
+            ma = pop[0].get_arena_genes()
         all_genes = [(i, individual.get_arena_genes(), ma) for i, individual in enumerate(pop)]
         with get_context("spawn").Pool() as pool:
             pool.map(eval_behav, all_genes)

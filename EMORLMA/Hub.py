@@ -119,7 +119,7 @@ class Hub(Default, Logger):
                 else:
                     p2 = self.offspring_pool[player_ids[1] - self.pop_size]
 
-                outcome = match_result > 0
+                outcome = (match_result + 1 )/2.
                 p1.elo.update(p1.elo(), p2.elo(), np.float32(outcome))
                 p2.elo.update(p2.elo(), p1.elo(), np.float32(not outcome))
 
