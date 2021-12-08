@@ -14,14 +14,19 @@ from EMORL.plotting import plot_stats, heatmap
 # from Game.core import Game
 from pprint import pprint
 from Gym.Boxing import Boxing as Game
+from Gym.BoxingMA import BoxingMA as GameMA
 
 
 def play_episode(game, player):
     done = False
+    idx = 0
     try:
         while not done:
+            idx += 1
             game.render()
             action_id, distribution, hidden_h, hidden_c = player.policy(game.state)
+            if isinstance(game, GameMA):
+                action_id = [action_id, (idx // 30)%16]
             done, win = game.step(action_id)
     except KeyboardInterrupt:
         pass
@@ -29,8 +34,11 @@ def play_episode(game, player):
 
 
 def eval_behav(args):
-    k, genotype = args
-    game = Game()
+    k, genotype, ma = args
+    if ma:
+        game = GameMA()
+    else:
+        game = Game()
 
     player = Individual(-1, game.state_dim, game.action_dim, [])
     player.set_arena_genes(genotype)
@@ -48,6 +56,8 @@ def eval_behav(args):
                 states[state_idx] = game.state
                 state_idx += 1
                 action_id, distribution, hidden_h, hidden_c = player.policy(game.state)
+                if ma:
+                    action_id = [action_id, np.random.randint(0, game.action_dim)]
                 done, win = game.step(action_id)
             if win == 1:
                 points[0] += 1
@@ -69,13 +79,16 @@ def eval_behav(args):
 
 
 
-def load_and_stuff(path, pop_size, stuff='plot'):
+def load_and_stuff(path, pop_size, stuff='plot', ma=False):
     gpus = tf.config.experimental.list_physical_devices('GPU')
     print(gpus)
     for gpu in gpus:
         tf.config.experimental.set_memory_growth(gpu, True)
     tf.summary.experimental.set_step(0)
-    game = Game()
+    if ma:
+        game = GameMA()
+    else:
+        game = Game()
 
     pop = Population(pop_size, game.state_dim, game.action_dim)
     pop.initialize(trainable=True, batch_dim=(128, 80))
@@ -99,7 +112,7 @@ def load_and_stuff(path, pop_size, stuff='plot'):
             play_episode(game, player)
 
     def eval_pop():
-        all_genes = [(i, individual.get_arena_genes()) for i, individual in enumerate(pop)]
+        all_genes = [(i, individual.get_arena_genes(), ma) for i, individual in enumerate(pop)]
         with get_context("spawn").Pool() as pool:
             pool.map(eval_behav, all_genes)
 

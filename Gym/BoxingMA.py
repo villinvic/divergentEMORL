@@ -7,8 +7,20 @@ import retro
 class BoxingMA:
     def __init__(self, name='Boxing-Atari2600', frameskip=4, framestack=2, render=False):
         self.name = name
-        self.env = retro.RetroEnv(name, players=2, obs_type=retro.Observations.RAM, use_restricted_actions=retro.Actions.DISCRETE)
-
+        self.env = retro.RetroEnv(name, players=2, obs_type=retro.Observations.RAM)
+        self.action_multibinary = np.zeros(16)
+        self.action_dict = {
+            0 : np.array([0,0,0,0,0,0,0,0]),
+            1 : np.array([1,0,0,0,0,0,0,0]),
+            2 : np.array([0,0,0,0,1,0,0,0]),
+            3: np.array([0, 0, 0, 0, 0, 1, 0, 0]),
+            4: np.array([0, 0, 0, 0, 0, 0, 1, 0]),
+            5: np.array([0, 0, 0, 0, 0, 0, 0, 1]),
+            6: np.array([0, 0, 0, 0, 1, 1, 0, 0]),
+            7: np.array([0, 0, 0, 0, 0, 1, 1, 0]),
+            8: np.array([0, 0, 0, 0, 0, 0, 1, 1]),
+            9: np.array([0, 0, 0, 0, 1, 0, 0, 1]),
+        }
         self.ram_locations = dict(player_x=32,
                                   player_y=34,
                                   enemy_x=33,
@@ -31,7 +43,7 @@ class BoxingMA:
             [0.05, 0.05, 0.05, 0.05, 0.01, 0.01, 0.014, 0.014, 0.014, 0.004, 0.004, 0.004, 0.004, 0.004, 0.5],
             dtype=np.float32)
         self.index_permut = np.array([2,3,0,1,5,4,8,9,6,7,12,13,10,11,14], dtype=np.int32)
-        self.action_dim = 16
+        self.action_dim = 10
         self.state_dim_base = len(self.indexes)
         self.state_dim_actions = len(self.indexes) + self.action_dim
 
@@ -61,7 +73,17 @@ class BoxingMA:
 
     def action_to_id(self, actions):
         self.past_action[:] = actions
-        return actions
+        # 0 > fire
+        # 1 > None
+        # 2 > None
+        # 3 > None
+        # 4 > up
+        # 5 > down
+        # 6 > left
+        # 7 > right
+        self.action_multibinary[:8] = self.action_dict[actions[0]]
+        self.action_multibinary[8:] = self.action_dict[actions[1]]
+        return self.action_multibinary
 
     @staticmethod
     def interpret_hex_as_dec(value):
@@ -96,8 +118,10 @@ class BoxingMA:
     def step(self, actions):
         #reward = 0
         actions = self.action_to_id(actions)
+
         if self.do_render:
             self.render()
+
         for _ in range(self.frameskip):
             observation, rr, done, info = self.env.step(actions)
             #reward += rr
