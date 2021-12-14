@@ -5,7 +5,7 @@ import matplotlib.cm as cm
 from scipy.ndimage.filters import gaussian_filter
 
 
-def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, path):
+def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, ref_score, path):
     plt.clf()
 
     selected_set = set(selected)
@@ -38,6 +38,8 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, path):
     for case, (div, perf) in cases.items():
         print(case, div)
         plt.scatter(div, perf, label=case, marker='v')
+
+    plt.axhline(y=ref_score, color='y', linestyle='dashed', label='Strong agent')
 
 
     plt.ylabel(r'$\zeta_{perf}(\pi)$')

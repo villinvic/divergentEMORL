@@ -6,8 +6,10 @@ from time import time
 import datetime
 import fire
 import os
+import pickle
 
 from EMORLMA.Population import Population
+from EMORLMA.Individual import Individual
 from EMORLMA.misc import policy_similarity, MovingAverage, rbf_kernel
 from EMORLMA.MOO import ND_sort
 from EMORLMA.plotting import plot_perf_uniq
@@ -35,6 +37,10 @@ class Hub(Default, Logger):
 
         self.running_instance_id = datetime.datetime.now().strftime("EMORL_%Y-%m-%d_%H-%M")
         self.logger.info("Hub started at" + ip)
+
+        self.reference = Individual(-1, dummy_env.state_dim, dummy_env.action_dim, [], trainable=True)
+        with open(self.reference_path, 'rb') as f:
+            self.reference.set_all(pickle.load(f))
 
         self.logger.info("Population Initialization started...")
         self.population = Population(self.pop_size, dummy_env.state_dim, dummy_env.action_dim)
@@ -110,34 +116,29 @@ class Hub(Default, Logger):
             match_result, player_ids = self.blob_socket.recv_pyobj(zmq.NOBLOCK)
             self.logger.info((match_result, player_ids))
             if match_result is not None:
-                if player_ids[0] < self.pop_size:
-                    p1 = self.population[player_ids[0]]
-                else:
-                    p1 = self.offspring_pool[player_ids[0]-self.pop_size]
-                if player_ids[1] < self.pop_size:
-                    p2 = self.population[player_ids[1]]
-                else:
-                    p2 = self.offspring_pool[player_ids[1] - self.pop_size]
+                p1 = self.index_to_individual(player_ids[0])
+                p2 = self.index_to_individual(player_ids[1])
 
                 outcome = (match_result + 1 )/2.
                 p1.elo.update(p1.elo(), p2.elo(), np.float32(outcome))
                 p2.elo.update(p2.elo(), p1.elo(), np.float32(not outcome))
 
-            matched = [index + self.pop_size, self.matchmaking(index)]
-            np.random.shuffle(matched)
-            if matched[0] >= self.pop_size:
-                players = [self.offspring_pool[matched[0] - self.pop_size].get_arena_genes(),
-                           self.population[matched[1]].get_arena_genes()]
-            else:
-                players = [self.population[matched[0]].get_arena_genes(),
-                           self.offspring_pool[matched[1] - self.pop_size].get_arena_genes()]
-            self.blob_socket.send_pyobj((players, matched))
+            self.blob_socket.send_pyobj(self.matchmaking())
         except zmq.ZMQError:
             pass
 
-    def matchmaking(self, against):
+    def matchmaking(self):
         # random matchmaking policy
-        return np.random.choice(np.arange(self.pop_size))
+        idxs = np.random.choice(np.arange(-1, self.pop_size+self.n_offspring), 2, replace=False)
+        return [self.index_to_individual(idx).get_arena_genes() for idx in idxs], idxs
+
+    def index_to_individual(self, idx):
+        if idx < 0:
+            return self.reference
+        elif idx < self.pop_size:
+            return self.population[idx]
+        else:
+            return self.offspring_pool[idx-self.pop_size]
 
     def compute_diversity(self):
         for index, i in enumerate(self.population):
@@ -326,7 +327,7 @@ class Hub(Default, Logger):
         # get stats of selection...
         full_path = 'checkpoints/' + self.running_instance_id + '/ckpt_' + str(
             self.population.checkpoint_index) + '/'
-        plot_perf_uniq(self.perf_and_uniqueness[:, :, 0], selected, self.population, full_path)
+        plot_perf_uniq(self.perf_and_uniqueness[:, :, 0], selected, self.population, self.reference.elo(), full_path)
 
         print(self.perf_and_uniqueness[:, selected, 0])
 
