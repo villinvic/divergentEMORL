@@ -120,8 +120,10 @@ class Hub(Default, Logger):
                 p2 = self.index_to_individual(player_ids[1])
 
                 outcome = (match_result + 1 )/2.
-                p1.elo.update(p1.elo(), p2.elo(), np.float32(outcome))
-                p2.elo.update(p2.elo(), p1.elo(), np.float32(not outcome))
+                if player_ids[1] != -1:
+                    p1.elo.update(p1.elo(), p2.elo(), np.float32(outcome))
+                if player_ids[0] != -1:
+                    p2.elo.update(p2.elo(), p1.elo(), np.float32(not outcome))
 
             self.blob_socket.send_pyobj(self.matchmaking())
         except zmq.ZMQError:
