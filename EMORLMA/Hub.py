@@ -41,6 +41,8 @@ class Hub(Default, Logger):
         self.reference = Individual(-1, dummy_env.state_dim, dummy_env.action_dim, [], trainable=True)
         with open(self.reference_path, 'rb') as f:
             self.reference.set_all(pickle.load(f))
+        self.reference.elo.start = 3000
+        self.reference.elo.locked = True
 
         self.logger.info("Population Initialization started...")
         self.population = Population(self.pop_size, dummy_env.state_dim, dummy_env.action_dim)
@@ -120,10 +122,8 @@ class Hub(Default, Logger):
                 p2 = self.index_to_individual(player_ids[1])
 
                 outcome = (match_result + 1 )/2.
-                if player_ids[1] != -1:
-                    p1.elo.update(p1.elo(), p2.elo(), np.float32(outcome))
-                if player_ids[0] != -1:
-                    p2.elo.update(p2.elo(), p1.elo(), np.float32(not outcome))
+                p1.elo.update(p1.elo(), p2.elo(), np.float32(outcome))
+                p2.elo.update(p2.elo(), p1.elo(), np.float32(not outcome))
 
             self.blob_socket.send_pyobj(self.matchmaking())
         except zmq.ZMQError:
