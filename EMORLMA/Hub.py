@@ -131,7 +131,7 @@ class Hub(Default, Logger):
 
     def matchmaking(self):
         # random matchmaking policy
-        idxs = [np.random.choice(np.arange(-1, self.pop_size+self.n_offspring), 1, replace=False), self.pop_size]
+        idxs = [np.random.choice(np.arange(-1, self.pop_size+self.n_offspring), replace=False), self.pop_size]
         np.random.shuffle(idxs)
         return [self.index_to_individual(idx).get_arena_genes() for idx in idxs], idxs
 
