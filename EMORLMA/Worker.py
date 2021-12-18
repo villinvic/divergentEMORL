@@ -69,8 +69,10 @@ class Worker(Default):
         return True
 
     def send_exp(self):
-        self.exp_socket.send_pyobj(self.trajectory[0])
-        self.exp_socket.send_pyobj(self.trajectory[1])
+        if self.player_ids[0] == 20:
+            self.exp_socket.send_pyobj(self.trajectory[0])
+        if self.player_ids[1] == 20:
+            self.exp_socket.send_pyobj(self.trajectory[1])
 
         # TODO LSTM hidden state update
 

@@ -138,7 +138,7 @@ def plot_stats(population, path):
 
 def data_coord2view_coord(p, vlen, pmin, pmax):
     dp = pmax - pmin
-    dv = (p - pmin) / dp * vlen
+    dv = (p - pmin) / (dp * vlen+1e-8)
     return dv
 
 def nearest_neighbours(xs, ys, reso, n_neighbours):

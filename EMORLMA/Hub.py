@@ -41,7 +41,7 @@ class Hub(Default, Logger):
         self.reference = Individual(-1, dummy_env.state_dim, dummy_env.action_dim, [], trainable=True)
         with open(self.reference_path, 'rb') as f:
             self.reference.set_all(pickle.load(f))
-        self.reference.elo.start = 3000
+        self.reference.elo.start = 2000
         self.reference.elo.locked = True
 
         self.logger.info("Population Initialization started...")
@@ -131,7 +131,8 @@ class Hub(Default, Logger):
 
     def matchmaking(self):
         # random matchmaking policy
-        idxs = np.random.choice(np.arange(-1, self.pop_size+self.n_offspring), 2, replace=False)
+        idxs = [np.random.choice(np.arange(-1, self.pop_size+self.n_offspring), 1, replace=False), self.pop_size]
+        np.random.shuffle(idxs)
         return [self.index_to_individual(idx).get_arena_genes() for idx in idxs], idxs
 
     def index_to_individual(self, idx):

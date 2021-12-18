@@ -139,7 +139,7 @@ def plot_stats(population, path):
 
 def data_coord2view_coord(p, vlen, pmin, pmax):
     dp = pmax - pmin
-    dv = (p - pmin) / dp * vlen
+    dv = (p - pmin) / (dp * vlen+1e-8)
     return dv
 
 def nearest_neighbours(xs, ys, reso, n_neighbours):
@@ -185,7 +185,7 @@ def heatmap(trajectory, path, name='heatmap', title='Location heatmap'):
     #plt.ylim(extent[2], extent[3])
     plt.axis('off')
 
-    plt.title(title)
+    #plt.title(title)
     plt.savefig(path + name+'.png')
     plt.axis('on')
 

@@ -7,6 +7,7 @@ import fire
 import logging
 import tensorflow as tf
 import multiprocessing
+import pickle
 
 from EMORL.Individual import Individual
 from EMORL.Population import Population
@@ -101,6 +102,15 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False):
     pop.initialize(trainable=True, batch_dim=(128, 80))
     pop.load(path)
     player = Individual(-1, game.state_dim, game.action_dim, [])
+    if ma:
+        opp = Individual(-1, game.state_dim, game.action_dim, [], trainable=True)
+        with open('checkpoints/sample_ma/aggressive_2000.pkl', 'rb') as f:
+            opp.set_all(pickle.load(f))
+
+
+        opp_genes = opp.get_arena_genes()
+    else:
+        opp_genes = None
     set_start_method("spawn")
 
     def plot():
@@ -112,16 +122,16 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False):
             player.set_arena_genes(individual.get_arena_genes())
             if player.genotype['brain'].has_lstm:
                 player.genotype['brain'].lstm.reset_states()
-            print('-------individual', i, '-------')
+            print('-------individual', individual.id, '-------')
             pprint([individual.genotype['learning'],individual.genotype['experience']])
             pprint(['performance:', individual.performance])
 
-            play_episode(game, player, opp_genes=pop[np.random.randint(pop_size)].get_arena_genes() if ma else None)
+
+            play_episode(game, player, opp_genes=opp_genes if ma else None)
 
     def eval_pop():
-        if ma:
-            ma = pop[0].get_arena_genes()
-        all_genes = [(i, individual.get_arena_genes(), ma) for i, individual in enumerate(pop)]
+
+        all_genes = [(i, individual.get_arena_genes(), opp_genes) for i, individual in enumerate(pop)]
         with get_context("spawn").Pool() as pool:
             pool.map(eval_behav, all_genes)
 
