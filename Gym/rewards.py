@@ -125,6 +125,46 @@ class BoxingRewards:
         return self.values, performance
 
 
+class KfmRewards:
+
+    base = {
+        'movement': 0.05,
+        'jump': 0.05,
+        'hurt': 0.05,
+        'score': 0.05,
+        'death': 1.0,
+    }
+
+    main = 'win'
+
+    def __init__(self, batch_size, trajectory_length):
+
+        self.scores = {
+            name : np.zeros((batch_size, trajectory_length-1), dtype=np.float32) for name, scale in self.base.items()
+        }
+
+        self.values = np.zeros((batch_size, trajectory_length-1), dtype=np.float32)
+
+    def __setitem__(self, key, value):
+        self.scores[key] = value
+
+    def __getitem__(self, item):
+        return self.scores[item]
+
+
+    def compute(self, states, reward_shape, base_rewards):
+
+        self['movement'][:] = np.abs(states[:, :-1, 74] - states[:, 1:, 74])
+        self['jump'][:] = np.abs(states[:, 1:, 74] - states[:, :-1, 74])
+        self['hurt'][:] = -np.clip(states[:, :-1, 28] - states[:, 1:, 28], 0, np.inf)
+        self['score'][:] = np.clip(states[:, 1:, 25] - states[:, :-1, 25], 0, np.inf)
+        self['death'][:] = -np.float32(states[:, 1:, 25] - states[:, :-1, 25] < 0)
+
+        self.values[:, :] = np.sum([self[event]*reward_shape[event]/state_scale for event, state_scale in self.base.items()], axis=0)
+
+        return self.values, np.mean(base_rewards[np.logical_not(np.isnan(base_rewards))]) * 255
+
+
 class MujocoRewards:
     indexes = {
         'reward_forward': 0,

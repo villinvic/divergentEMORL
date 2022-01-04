@@ -9,7 +9,8 @@ import signal
 
 from config.Loader import Default
 #from Game.core import Game
-from Gym.Boxing import Boxing as Game
+#from Gym.Boxing import Boxing as Game
+from Gym.Kfm import Kfm as Game
 from EMORL.Individual import Individual
 
 

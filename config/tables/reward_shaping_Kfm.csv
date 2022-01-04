@@ -1,0 +1,6 @@
+name, lower_bound, higher_bound
+"movement", 0.02, 0.021
+"jump", 0.0001, 0.00011
+"hurt", 0.1, 0.11
+"score", 0.1, 0.11
+"death", 1.0, 1.1
