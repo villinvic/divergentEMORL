@@ -54,6 +54,18 @@ class Kfm:
 
         self.past_action = 0
 
+        self.scales = [254., 255.,   1.,   7., 192.,   1,   5., 255.,   1.,   1.,   9.,   1.,   1.,  18.,
+                      18.,   1.,   8.,  36., 128.,  60.,   3.,   1.,   1.,   1.,   1.,  100.,   1.,  32.,
+                     153., 255.,   3.,   1.,   1.,  31.,  64.,  47., 172., 223., 144., 218., 218., 221.,
+                      62., 220., 209., 221., 185., 218., 215., 218., 177., 219.,   3., 255.,  64., 103.,
+                      27.,  11., 255., 255.,  25., 128.,  38.,   3.,   9., 255.,  64.,   1.,   2., 128.,
+                     209., 209., 208., 207., 208.,  39.,  39., 160.,  64., 255.,   1.,  30.,   1., 251.,
+                     251., 251., 250., 251., 245., 165.,   8.,   3.,   8.,   8., 197., 128., 188., 230.,
+                     157., 223., 157., 223., 157., 223., 157., 223.,   1., 223., 180., 223., 185., 223.,
+                     190., 223., 157., 223., 157., 223., 130., 141., 216.,   1., 165.,  22., 200., 252.,
+                     141., 211.]
+
+
         # self.action = np.zeros(self.action_dim*2, dtype=np.int16)
 
     def action_to_id(self, action_id):
@@ -61,7 +73,7 @@ class Kfm:
         return self.action_dict[action_id] # [action_id, np.random.randint(0, self.action_dim)]
 
     def preprocess(self, obs):
-        return obs / 255.
+        return obs / self.scales
 
     def win(self, done, obs):
         return obs[25] if done else np.nan
@@ -72,6 +84,8 @@ class Kfm:
             observation, rr, done, info = self.env.step(
                 self.action_to_id(action))
             reward += rr
+
+        self.scales[:]= np.maximum(self.scales, observation)
         observation = self.preprocess(observation)
         self.state[self.state_dim_actions:] = self.state[:-self.state_dim_actions]
         self.state[:self.state_dim_base] = observation
@@ -81,6 +95,7 @@ class Kfm:
         return done, self.win(done, observation)
 
     def reset(self):
+        print(self.scales)
         self.env.reset()
         self.state[:] = np.tile(self.start_state, self.framestack)
         self.past_action = 0
