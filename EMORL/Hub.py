@@ -15,6 +15,8 @@ from EMORL.plotting import plot_perf_uniq
 #from Gym.rewards import BoxingRewards
 from Gym.Kfm import Kfm
 from Gym.rewards import KfmRewards
+from Melee.rewards import Rewards
+from Melee.game.console import Console
 from config.Loader import Default
 from logger.Logger import Logger
 
@@ -32,7 +34,8 @@ class Hub(Default, Logger):
         tf.summary.experimental.set_step(0)
 
         #dummy_env = Game()
-        dummy_env = Kfm()
+        #dummy_env = Kfm()
+        dummy_env = Console(-1, False)
         self.max_entropy = np.log(dummy_env.action_dim)
 
         self.running_instance_id = datetime.datetime.now().strftime("EMORL_%Y-%m-%d_%H-%M")
@@ -59,7 +62,7 @@ class Hub(Default, Logger):
 
         self.eval_queue = MovingAverage(self.moving_avg_size)
 
-        self.rewards = KfmRewards(self.BATCH_SIZE, self.TRAJECTORY_LENGTH)
+        self.rewards = Rewards(self.BATCH_SIZE, self.TRAJECTORY_LENGTH) #KfmRewards(self.BATCH_SIZE, self.TRAJECTORY_LENGTH)
             #Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.max_see, dummy_env.view_range)
 
         c = zmq.Context()
@@ -89,6 +92,7 @@ class Hub(Default, Logger):
 
 
     def init_sampled_trajectories(self, dummy_env):
+        """
         for j in range(self.sample_size):
 
             n_steps = 5
@@ -97,7 +101,8 @@ class Hub(Default, Logger):
                 if done:
                     dummy_env.reset()
             self.sampled_trajectory[0, j, :] = dummy_env.state#/ dummy_env.scales
-
+        """
+        self.sampled_trajectory[0, : , :] = np.random.random((self.sample_size, dummy_env.state_dim))
         self.sampled_trajectory_tmp[:] = self.sampled_trajectory
 
     def recv_training_data(self):
@@ -187,7 +192,7 @@ class Hub(Default, Logger):
             wins = np.float32(np.stack(trajectory[:, 3], axis=0)[:, :-1])
             #rewards = np.float32(np.stack(trajectory[:, 5], axis=0)[:, :-1])
             hidden_states = np.float32(np.stack(trajectory[:, 4], axis=0))
-            rews, performance = self.rewards.compute(states, self.offspring_pool[index].genotype['experience'], wins)
+            rews, performance = self.rewards.compute(states, self.offspring_pool[index].genotype['experience'])
             #rews = self.rewards.compute(rewards, self.offspring_pool[index].genotype['experience'], wins)
             #performance = np.sum(np.mean(wins, axis=0))
 

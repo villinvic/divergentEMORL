@@ -96,7 +96,6 @@ class Kfm:
         return done, self.win(done, observation)
 
     def reset(self):
-        print(self.scales)
         self.env.reset()
         self.state[:] = np.tile(self.start_state, self.framestack)
         self.past_action = 0

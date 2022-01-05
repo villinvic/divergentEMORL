@@ -25,6 +25,7 @@ def run_many(n_arenas=1,
     else:
 
         cmd = "python3 EMORL/Worker.py " \
+              "--ID={ID} "\
               "--render={render} "\
               "--hub_ip={hub_ip} "
 
@@ -35,7 +36,7 @@ def run_many(n_arenas=1,
 
     def start():
         for ID in range(n_arenas):
-            procs[ID] = Popen(cmd.format(hub_ip=hub_ip, render=(render and ID == 0)).split(),
+            procs[ID] = Popen(cmd.format(ID=ID, hub_ip=hub_ip, render=(render and ID == 0)).split(),
                               env=dict(os.environ, PYTHONPATH=os.getcwd()))
 
     def close():
