@@ -158,7 +158,7 @@ class KfmRewards:
         self['jump'][:] = np.abs(states[:, 1:, 74] - states[:, :-1, 74])
         self['hurt'][:] = -np.clip(states[:, :-1, 28] - states[:, 1:, 28], 0, np.inf)
         self['score'][:] = np.clip(states[:, 1:, 25] - states[:, :-1, 25], 0, np.inf)
-        self['death'][:] = -np.float32(states[:, :-1, 28] - states[:, 1:, 28] < 0)
+        self['death'][:] = np.float32(states[:, 1:, 28] < 1e-4)
 
         self.values[:, :] = np.sum([self[event]*reward_shape[event]/state_scale for event, state_scale in self.base.items()], axis=0)
 
