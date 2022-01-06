@@ -163,6 +163,8 @@ class MovingAverage:
         indexes = np.arange(self.last_k)
         values = self.values.take(np.arange((self.index%self.length)-self.last_k, self.index%self.length), mode='wrap')
         args = np.argwhere(np.logical_not(np.isnan(values))).flatten()
+        if len(args)<2:
+            return 1
         return np.float32(np.polyfit(indexes[args], values[args], 1)[-2])
 
 if __name__ == '__main__':
