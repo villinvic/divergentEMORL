@@ -8,15 +8,18 @@ import logging
 import tensorflow as tf
 import multiprocessing
 import pickle
+import time
 
 from EMORL.Individual import Individual
 from EMORL.Population import Population
 from EMORL.plotting import plot_stats, heatmap
 # from Game.core import Game
 from pprint import pprint
-#from Gym.Boxing import Boxing as Game
-from Gym.Kfm import Kfm as Game
+from Gym.Boxing import Boxing as Game
+#from Gym.Kfm import Kfm as Game
 from Gym.BoxingMA import BoxingMA as GameMA
+from EMORL.Worker import MeleeWorker
+from Melee.game.console import Console
 
 
 def play_episode(game, player, opp_genes):
@@ -37,6 +40,11 @@ def play_episode(game, player, opp_genes):
     except KeyboardInterrupt:
         pass
     game.reset()
+
+def play_melee(worker, player, opp_genes=None):
+    worker.player.set_arena_genes(player.get_arena_genes())
+    worker.play_game()
+    time.sleep(1)
 
 
 def eval_behav(args):
@@ -98,6 +106,7 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False):
         game = GameMA()
     else:
         game = Game()
+        #game = Console(-1, False)
 
     pop = Population(pop_size, game.state_dim, game.action_dim)
     pop.initialize(trainable=True, batch_dim=(128, 80))
@@ -119,6 +128,7 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False):
         plot_stats(pop, '')
 
     def visualize_pop():
+        worker = MeleeWorker(0, True)
         for i, individual in enumerate(pop):
             player.set_arena_genes(individual.get_arena_genes())
             if player.genotype['brain'].has_lstm:
@@ -128,7 +138,8 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False):
             pprint(['performance:', individual.performance])
 
 
-            play_episode(game, player, opp_genes=opp_genes if ma else None)
+            #play_episode(game, player, opp_genes=opp_genes if ma else None)
+            play_melee(worker, player)
 
     def eval_pop():
 

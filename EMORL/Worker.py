@@ -11,8 +11,8 @@ from collections import deque
 
 from config.Loader import Default
 #from Game.core import Game
-#from Gym.Boxing import Boxing as Game
-from Gym.Kfm import Kfm as Game
+from Gym.Boxing import Boxing as Game
+#from Gym.Kfm import Kfm as Game
 from Melee.game.console import Console
 from Melee.characters.characters import string2char
 from Melee.input.pad import Button
@@ -278,4 +278,4 @@ class MeleeWorker(Default):
 
 
 if __name__ == '__main__':
-    fire.Fire(MeleeWorker)
+    fire.Fire(Worker)

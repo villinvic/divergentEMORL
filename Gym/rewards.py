@@ -74,7 +74,7 @@ class BoxingRewards:
         'hit': 0.05,
         'hurt': 0.05,
         'win': 1.,
-        'time': 1.,
+        'away': 0.05,
     }
 
     main = 'win'
@@ -86,9 +86,6 @@ class BoxingRewards:
         }
 
         self.values = np.zeros((batch_size, trajectory_length-1), dtype=np.float32)
-
-
-        self['time'][:] =  -1.
 
     def __setitem__(self, key, value):
         self.scores[key] = value
@@ -105,6 +102,8 @@ class BoxingRewards:
     def compute(self, states, reward_shape, base_rewards):
 
         self['movement'][:] = np.clip(np.sqrt((states[:, :-1, 0]-states[:, 1:, 0])**2+(states[:, :-1, 1]-states[:, 1:, 1])**2), -1.5, 1.5)
+        self['away'][:] = np.sqrt((states[:, :-1, 0] - states[:, 1:, 0]) ** 2 + (states[:, :-1, 1] - states[:, 1:, 1]) ** 2) - \
+            np.sqrt((states[:, 1:, 0] - states[:, 1:, 2]) ** 2 + (states[:, 1:, 1] - states[:, 1:, 3]) ** 2) \
 
         self['hit'][:] = np.clip( states[:, 1:, 4]- states[:, :-1, 4], 0., np.inf)
         self['hurt'][:] = -np.clip(states[:, 1:, 5] - states[:, :-1, 5], 0, np.inf)

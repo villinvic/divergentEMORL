@@ -1,8 +1,8 @@
 name, lower_bound, higher_bound
-"hit_dmg", 2e-3, 0.03
-"hurt_dmg", 2e-3, 0.03
+"hit_dmg", 3e-3, 0.03
+"hurt_dmg", 3e-3, 0.03
 "kill", 0.5, 3
 "death", 0.5, 3
 "win", 1, 10
 "combo", 0.25, 1
-"distance", 1e-5, 5e-4
+"distance", 1e-5, 1e-3
