@@ -1,5 +1,5 @@
 name, lower_bound, higher_bound
 "learning_rate", 5.5e-5, 2e-4
 "entropy_cost", 3e-4, 2e-3
-"gamma", 0.99, 0.995
-"dvd_lambda",  0.01, 1.0
+"gamma", 0.99, 0.997
+"dvd_lambda",  0.01, 0.5
