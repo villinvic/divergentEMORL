@@ -101,7 +101,7 @@ class BoxingRewards:
 
     def compute(self, states, reward_shape, base_rewards):
 
-        self['movement'][:] = np.clip(np.sqrt((states[:, :-1, 0]-states[:, 1:, 0])**2+(states[:, :-1, 1]-states[:, 1:, 1])**2), -1.5, 1.5)
+        self['movement'][:] = np.clip(np.sqrt((states[:, :-1, 0]-states[:, 1:, 0])**2+(states[:, :-1, 1]-states[:, 1:, 1])**2), 0, 1.5)
         self['away'][:] = np.clip(np.sqrt((states[:, 1:, 0] - states[:, 1:, 2]) ** 2 + (states[:, 1:, 1] - states[:, 1:, 3]) ** 2) - \
             np.sqrt((states[:, :-1, 0] - states[:, :-1, 2]) ** 2 + (states[:, :-1, 1] - states[:, :-1, 3]) ** 2), -1.5, 1.5)
 
