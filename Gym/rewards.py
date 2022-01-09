@@ -105,6 +105,8 @@ class BoxingRewards:
         self['away'][:] = np.clip(np.sqrt((states[:, 1:, 0] - states[:, 1:, 2]) ** 2 + (states[:, 1:, 1] - states[:, 1:, 3]) ** 2) - \
             np.sqrt((states[:, :-1, 0] - states[:, :-1, 2]) ** 2 + (states[:, :-1, 1] - states[:, :-1, 3]) ** 2), -1.5, 1.5)
 
+        print(self['away'] / self.base['away'])
+
         self['hit'][:] = np.clip( states[:, 1:, 4]- states[:, :-1, 4], 0., np.inf)
         self['hurt'][:] = -np.clip(states[:, 1:, 5] - states[:, :-1, 5], 0, np.inf)
 
