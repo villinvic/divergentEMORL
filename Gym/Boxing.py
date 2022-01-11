@@ -9,7 +9,7 @@ np.set_printoptions(suppress=True)
 # 'Boxing-Atari2600'
 
 class Boxing:
-    def __init__(self, name='Boxing-ramNoFrameskip-v4', frameskip=4, framestack=2, render=False):
+    def __init__(self, name='Boxing-ramNoFrameskip-v4', frameskip=4, framestack=4, render=False):
         self.name = name
         self.env = gym.make(name)
         # self.env = retro.RetroEnv(name, players=2, obs_type=retro.Observations.RAM, use_restricted_actions=retro.Actions.DISCRETE)

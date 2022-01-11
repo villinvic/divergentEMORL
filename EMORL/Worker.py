@@ -278,4 +278,4 @@ class MeleeWorker(Default):
 
 
 if __name__ == '__main__':
-    fire.Fire(MeleeWorker)
+    fire.Fire(Worker)

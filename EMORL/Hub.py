@@ -34,8 +34,8 @@ class Hub(Default, Logger):
         tf.summary.experimental.set_step(0)
 
         #dummy_env = Game()
-        #dummy_env = Boxing()
-        dummy_env = Console(-1, False)
+        dummy_env = Boxing()
+        #dummy_env = Console(-1, False)
         self.max_entropy = np.log(dummy_env.action_dim)
 
         self.running_instance_id = datetime.datetime.now().strftime("EMORL_%Y-%m-%d_%H-%M")
@@ -62,7 +62,7 @@ class Hub(Default, Logger):
 
         self.eval_queue = MovingAverage(self.moving_avg_size)
 
-        self.rewards = Rewards(self.BATCH_SIZE, self.TRAJECTORY_LENGTH) #KfmRewards(self.BATCH_SIZE, self.TRAJECTORY_LENGTH)
+        self.rewards = BoxingRewards(self.BATCH_SIZE, self.TRAJECTORY_LENGTH) #KfmRewards(self.BATCH_SIZE, self.TRAJECTORY_LENGTH)
             #Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.max_see, dummy_env.view_range)
 
         c = zmq.Context()
@@ -174,7 +174,7 @@ class Hub(Default, Logger):
             # Cook data
             states = np.float32(np.stack(trajectory[:, 0], axis=0))
             wins = np.float32(np.stack(trajectory[:, 3], axis=0)[:, :-1])
-            rews, performance = self.rewards.compute(states, self.population[index].genotype['experience'])
+            rews, performance = self.rewards.compute(states, self.population[index].genotype['experience'], wins)
             return performance
 
         return None
@@ -192,7 +192,7 @@ class Hub(Default, Logger):
             wins = np.float32(np.stack(trajectory[:, 3], axis=0)[:, :-1])
             #rewards = np.float32(np.stack(trajectory[:, 5], axis=0)[:, :-1])
             hidden_states = np.float32(np.stack(trajectory[:, 4], axis=0))
-            rews, performance = self.rewards.compute(states, self.offspring_pool[index].genotype['experience'])
+            rews, performance = self.rewards.compute(states, self.offspring_pool[index].genotype['experience'], wins)
             #rews = self.rewards.compute(rewards, self.offspring_pool[index].genotype['experience'], wins)
             #performance = np.sum(np.mean(wins, axis=0))
 
