@@ -75,6 +75,7 @@ class BoxingRewards:
         'hurt': 0.05,
         'win': 1.,
         'away': 0.05,
+        'time': 1.,
     }
 
     main = 'win'
@@ -109,6 +110,7 @@ class BoxingRewards:
         self['hurt'][:] = -np.clip(states[:, 1:, 5] - states[:, :-1, 5], 0, np.inf)
 
         self['win'][:] = base_rewards
+        self['time'][:] = -1.
 
         self.values[:, :] = np.sum([self[event]*reward_shape[event]/state_scale for event, state_scale in self.base.items()], axis=0)
 
