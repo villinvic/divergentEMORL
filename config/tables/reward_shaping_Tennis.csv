@@ -1,5 +1,5 @@
 name, lower_bound, higher_bound
-"movement", 0.00001, 0.002
+"movement", 0.00001, 0.003
 "back", 0.00001, 0.002
 "front", 0.00001, 0.002
 "aim", 0.01, 0.1
