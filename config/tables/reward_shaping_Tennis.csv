@@ -1,7 +1,7 @@
 name, lower_bound, higher_bound
-"movement", 0.0001, 0.01
-"opp_movement", 0.0001, 0.01
-"back", 0.0001, 0.01
-"front", 0.0001, 0.01
-"aim", 0.05, 0.2
-"score", 1., 3.
+"movement", 0.00001, 0.002
+"opp_movement", 0.00001, 0.002
+"back", 0.00001, 0.002
+"front", 0.00001, 0.002
+"aim", 0.01, 0.1
+"score", 0.2, 1.
