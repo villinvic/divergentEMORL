@@ -86,7 +86,6 @@ class BoxingRewards:
         'hurt': 0.05,
         'win': 1.,
         'away': 0.05,
-        'time': 1.,
     }
 
     main = 'win'
@@ -113,15 +112,14 @@ class BoxingRewards:
 
     def compute(self, states, reward_shape, base_rewards):
 
-        self['movement'][:] = np.clip(np.sqrt((states[:, :-1, 0]-states[:, 1:, 0])**2+(states[:, :-1, 1]-states[:, 1:, 1])**2), 0, 1.5)
-        self['away'][:] = np.clip(np.sqrt((states[:, 1:, 0] - states[:, 1:, 2]) ** 2 + (states[:, 1:, 1] - states[:, 1:, 3]) ** 2) - \
-            np.sqrt((states[:, :-1, 0] - states[:, :-1, 2]) ** 2 + (states[:, :-1, 1] - states[:, :-1, 3]) ** 2), 0, 1.5)
+        self['movement'][:] = np.clip(np.sqrt((states[:, :-1, 0 + len(states)//2]-states[:, 1:, 0])**2+(states[:, :-1, 1 + len(states)//2]-states[:, 1:, 1])**2), 0, 1.5)
+        self['away'][:] = -np.clip(np.sqrt((states[:, :-1, 0] - states[:, :-1, 2]) ** 2 + (states[:, :-1, 1] - states[:, :-1, 3]) ** 2) - \
+            np.sqrt((states[:, 1:, 0] - states[:, 1:, 2]) ** 2 + (states[:, 1:, 1] - states[:, 1:, 3]) ** 2), 0, 1.5)
 
         self['hit'][:] = np.clip( states[:, 1:, 4]- states[:, :-1, 4], 0., np.inf)
         self['hurt'][:] = -np.clip(states[:, 1:, 5] - states[:, :-1, 5], 0, np.inf)
 
         self['win'][:] = base_rewards
-        self['time'][:] = -1.
 
         self.values[:, :] = np.sum([self[event]*reward_shape[event]/state_scale for event, state_scale in self.base.items()], axis=0)
 
