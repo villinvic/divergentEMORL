@@ -3,7 +3,7 @@ import numpy as np
 
 class TennisRewards:
     base = {
-        'movement': 0.013,
+        'movement': 1.,
         'back': 0.01,
         'front': 0.01,
         'aim': 1.,
@@ -43,7 +43,7 @@ class TennisRewards:
         return dy
 
         """
-        self['movement'] = np.clip(np.sqrt((states[:, 1:, 5]-states[:, 1:, 5 + 21 * 3])**2+(states[:, 1:, 6]-states[:, 1:, 6 + 21 * 3])**2), 0, 1.5)
+        self['movement'] = -np.float32(states[:, 1:, 6] - states[:, :-1, 6] == 0.)
         #self['opp_movement'] = np.clip(
         #    np.sqrt((states[:, :-1, 0] - states[:, 1:, 0]) ** 2 + (states[:, :-1, 1] - states[:, 1:, 1]) ** 2), 0, 1.5)
         #             return obs[6] > 1.022
