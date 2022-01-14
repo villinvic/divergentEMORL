@@ -3,30 +3,28 @@ import numpy as np
 
 class TennisRewards:
     base = {
-        'movement': 0.01,
-        'opp_movement': 0.01,
+        'movement': 0.013,
+        'opp_movement': 0.013,
         'back': 0.01,
         'front': 0.01,
-        'aim': 1.0,
-        'score': 0.2,
-        'win': 1.,
+        'aim': 1.,
+        'score': 1.,
     }
 
     special = np.array([
     ])
 
-    main = 'win'
+    main = 'score'
 
 
-    def __init__(self, state_dim, batch_size, trajectory_length):
+    def __init__(self, batch_size, trajectory_length):
 
         self.scores = {
             name : np.zeros((batch_size, trajectory_length-1), dtype=np.float32) for name, scale in self.base.items()
         }
 
         self.values = np.zeros((batch_size, trajectory_length-1), dtype=np.float32)
-
-        self.state_dim = state_dim
+        self.is_returning = np.zeros((batch_size, trajectory_length-1), dtype=np.float32)
 
     def __setitem__(self, key, value):
         self.scores[key] = value
@@ -46,22 +44,36 @@ class TennisRewards:
         return dy
 
         """
+        self['movement'] = np.clip(np.sqrt((states[:, :-1, 5]-states[:, 1:, 5])**2+(states[:, :-1, 6]-states[:, 1:, 6])**2), 0, 1.5)
+        self['opp_movement'] = np.clip(
+            np.sqrt((states[:, :-1, 0] - states[:, 1:, 0]) ** 2 + (states[:, :-1, 1] - states[:, 1:, 1]) ** 2), 0, 1.5)
+        #             return obs[6] > 1.022
+        #         else:
+        #             return obs[6] < 0.028
+        self['back'] = np.float32( np.logical_or(states[:, 1:, 6]<=0.021, states[:, 1:, 6]>=1.47))
+        #         if self.side:
+        #             return obs[6] < 0.756
+        #         else:
+        #             return obs[6] > 0.294
+        self['front'] = np.float32( np.logical_and(states[:, 1:, 6]<0.97, states[:, 1:, 6]>0.90))
 
-        self['movement'] = np.sqrt((states[:, 1:, 5 - self.state_dim]-states[:, :-1, 5 - self.state_dim])**2 + (states[:, 1:, 6 - self.state_dim]-states[:, :-1, 6 - self.state_dim])**2)
-        self['opp_movement'] = np.sqrt((states[:, 1:, - self.state_dim] - states[:, :-1, - self.state_dim]) ** 2 + (
-                    states[:, 1:, 1 - self.state_dim] - states[:, :-1, 1 - self.state_dim]) ** 2)
-        self.dist[:, :] = states[:, 1:, 4] == 1.
-        self['near_target'] = np.float32(self.dist)
+        # np.abs(preprocessed_obs[4]-preprocessed_obs[6]) < 0.25 and preprocessed_obs[9] < 0.016 and np.abs(preprocessed_obs[9] - preprocessed_obs[9 + 21]) > 1e-5
+        self['aim'] = np.float32( np.logical_and(np.logical_and(
+            np.abs(states[:, 1: , 4]-states[:, 1: , 6]) < 0.25,
+            states[:, 1:, 9] < 0.016
+        ), np.abs(states[:, 1:, 9]-states[:, 1:, 9+21]) > 1e-5))
+
+        self['score'] = base_rewards
 
 
-        self['win'][:, :] = base_rewards
-
-        self['exploration'] = (-np.sqrt((states[:, 1:, 6 * self.max_see])**2+(states[:, 1:, 6 * self.max_see+1])**2)\
-               + np.sqrt((states[:, :-1, 6 * self.max_see])**2+(states[:, :-1, 6 * self.max_see+1])**2))
+        all_wins = np.sum(np.clip(base_rewards, 0., 1.))
+        all_points = np.sum(np.abs(base_rewards))
+        if all_points == 0:
+            performance = np.nan
+        else:
+            performance = all_wins / all_points * 100 - 50
 
         self.values[:, :] = np.sum([self[event]*reward_shape[event]/state_scale for event, state_scale in self.base.items()], axis=0)
-
-        performance = np.sum(np.mean(base_rewards/self.base[self.main], axis=0))
 
         return self.values, performance
 
@@ -221,9 +233,3 @@ class MujocoRewards:
         self.values[:, :] = np.sum([self[event]*reward_shape[event]/state_scale for event, state_scale in self.base.items()], axis=0)
 
         return self.values
-
-
-
-
-
-

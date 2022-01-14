@@ -12,11 +12,12 @@ from EMORL.misc import policy_similarity, MovingAverage, rbf_kernel
 from EMORL.MOO import ND_sort
 from EMORL.plotting import plot_perf_uniq
 from Gym.Boxing import Boxing
-from Gym.rewards import BoxingRewards
-from Gym.Kfm import Kfm
-from Gym.rewards import KfmRewards
-from Melee.rewards import Rewards
-from Melee.game.console import Console
+from Gym.rewards import BoxingRewards, TennisRewards
+from Gym.Tennis import Tennis
+#from Gym.Kfm import Kfm
+#from Gym.rewards import KfmRewards
+#from Melee.rewards import Rewards
+#from Melee.game.console import Console
 from config.Loader import Default
 from logger.Logger import Logger
 
@@ -34,7 +35,7 @@ class Hub(Default, Logger):
         tf.summary.experimental.set_step(0)
 
         #dummy_env = Game()
-        dummy_env = Boxing()
+        dummy_env = Tennis()
         #dummy_env = Console(-1, False)
         self.max_entropy = np.log(dummy_env.action_dim)
 
@@ -62,7 +63,7 @@ class Hub(Default, Logger):
 
         self.eval_queue = MovingAverage(self.moving_avg_size)
 
-        self.rewards = BoxingRewards(self.BATCH_SIZE, self.TRAJECTORY_LENGTH) #KfmRewards(self.BATCH_SIZE, self.TRAJECTORY_LENGTH)
+        self.rewards = TennisRewards(self.BATCH_SIZE, self.TRAJECTORY_LENGTH) #KfmRewards(self.BATCH_SIZE, self.TRAJECTORY_LENGTH)
             #Rewards( self.BATCH_SIZE, self.TRAJECTORY_LENGTH, dummy_env.area_size, dummy_env.max_see, dummy_env.view_range)
 
         c = zmq.Context()
