@@ -4,7 +4,6 @@ import numpy as np
 class TennisRewards:
     base = {
         'movement': 0.013,
-        'opp_movement': 0.013,
         'back': 0.01,
         'front': 0.01,
         'aim': 1.,
