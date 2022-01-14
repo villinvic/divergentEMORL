@@ -49,12 +49,12 @@ class TennisRewards:
         #             return obs[6] > 1.022
         #         else:
         #             return obs[6] < 0.028
-        self['back'] = np.float32( np.logical_or(states[:, 1:, 6]<=0.021, states[:, 1:, 6]>=1.47))
+        self['back'] = -np.float32( np.logical_or(states[:, 1:, 6]<=0.023, states[:, 1:, 6]>=1.45))
         #         if self.side:
         #             return obs[6] < 0.756
         #         else:
         #             return obs[6] > 0.294
-        self['front'] = np.float32( np.logical_and(states[:, 1:, 6]<0.97, states[:, 1:, 6]>0.90))
+        self['front'] = -np.float32( np.logical_and(states[:, 1:, 6]<0.99, states[:, 1:, 6]>0.88))
 
         # np.abs(preprocessed_obs[4]-preprocessed_obs[6]) < 0.25 and preprocessed_obs[9] < 0.016 and np.abs(preprocessed_obs[9] - preprocessed_obs[9 + 21]) > 1e-5
         self['aim'] = np.float32( np.logical_and(np.logical_and(

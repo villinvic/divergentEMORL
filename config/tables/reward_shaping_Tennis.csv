@@ -1,6 +1,6 @@
 name, lower_bound, higher_bound
-"movement", 0.00001, 0.003
-"back", 0.00001, 0.002
-"front", 0.00001, 0.002
-"aim", 0.01, 0.1
-"score", 0.2, 1.
+"movement", 0.00001, 0.001
+"back", 0.0001, 0.01
+"front", 0.0001, 0.01
+"aim", 0.05, 0.2
+"score", 0.1, 1.5
