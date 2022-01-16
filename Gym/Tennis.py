@@ -3,7 +3,7 @@ import numpy as np
 import time
 
 class Tennis:
-    def __init__(self, name='Tennis-ramNoFrameskip-v4', frameskip=3, framestack=4, render=False):
+    def __init__(self, name='Tennis-ramNoFrameskip-v4', frameskip=3, framestack=2, render=False):
         self.name = name
         self.env = gym.make(name)
 
@@ -201,7 +201,8 @@ class Tennis:
 
         self.state[self.state_dim_actions:] = self.state[:-self.state_dim_actions]
         self.state[:self.state_dim_base] = pp_state
-        #print(self.is_returning(self.state), np.abs(self.state[4]-self.state[6]), self.state[9])
+        #if self.is_returning(self.state):
+        #    print('bob returns')
         self.state[self.state_dim_base:self.state_dim_actions] = 0.
         self.state[self.state_dim_base+self.past_action] = 1.
 
@@ -215,7 +216,7 @@ class Tennis:
         self.past_action = 0
 
     def render(self):
-        time.sleep(0.04)
+        time.sleep(0.035)
         self.env.render()
 
     def compute_stats(self, states, final_states, scores):

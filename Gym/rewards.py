@@ -3,10 +3,10 @@ import numpy as np
 
 class TennisRewards:
     base = {
-        'movement': 1.,
+         #'movement': 1.,
         'back': 0.01,
         'front': 0.01,
-        'aim': 1.,
+        #'aim': 1.,
         'score': 1.,
     }
 
@@ -43,7 +43,7 @@ class TennisRewards:
         return dy
 
         """
-        self['movement'] = -np.float32(states[:, 1:, 6] - states[:, :-1, 6] == 0.)
+        #self['movement'] = -np.float32(states[:, 1:, 6] - states[:, :-1, 6] == 0.)
         #self['opp_movement'] = np.clip(
         #    np.sqrt((states[:, :-1, 0] - states[:, 1:, 0]) ** 2 + (states[:, :-1, 1] - states[:, 1:, 1]) ** 2), 0, 1.5)
         #             return obs[6] > 1.022
@@ -57,10 +57,10 @@ class TennisRewards:
         self['front'] = -np.float32( np.logical_and(states[:, 1:, 6]<0.99, states[:, 1:, 6]>0.88))
 
         # np.abs(preprocessed_obs[4]-preprocessed_obs[6]) < 0.25 and preprocessed_obs[9] < 0.016 and np.abs(preprocessed_obs[9] - preprocessed_obs[9 + 21]) > 1e-5
-        self['aim'] = np.float32( np.logical_and(np.logical_and(
-            np.abs(states[:, 1: , 4]-states[:, 1: , 6]) < 0.25,
-            states[:, 1:, 9] < 0.016
-        ), np.abs(states[:, 1:, 9]-states[:, 1:, 9+21]) > 1e-5))
+        #self['aim'] = np.float32( np.logical_and(np.logical_and(
+        #    np.abs(states[:, 1: , 4]-states[:, 1: , 6]) < 0.25,
+        #    states[:, 1:, 9] < 0.016
+        #), np.abs(states[:, 1:, 9]-states[:, 1:, 9+21]) > 1e-5))
 
         self['score'] = base_rewards
 

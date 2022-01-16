@@ -126,7 +126,7 @@ def get_indice_pairs(ax, bx):
 
 
 def safe_crossover(ax, bx):
-    t = np.random.uniform(-0.25, 1.25)
+    t = np.random.uniform(-0.15, 1.15) # 0.25
     return (1-t) * ax + t * bx
 
 
