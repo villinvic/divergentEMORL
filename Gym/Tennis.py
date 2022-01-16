@@ -3,26 +3,29 @@ import numpy as np
 import time
 
 class Tennis:
-    def __init__(self, name='Tennis-ramNoFrameskip-v4', frameskip=3, framestack=2, render=False):
+    def __init__(self, name='Tennis-ramNoFrameskip-v4', frameskip=2, framestack=2, render=False):
         self.name = name
         self.env = gym.make(name)
 
         self.ram_locations = dict(enemy_x=27,
                                      enemy_y=25,
-                                     enemy_score=70,
+                                     #enemy_score=70,
                                      ball_x=16,
                                      ball_y=15,
                                      player_x=26,
                                      player_y=24,
-                                     player_score=69,
+                                     #player_score=69,
                                      ball_height=17,
-                                     ball_direction=73)
+                                     #ball_direction=73
+                                     side=80,
+                                     ball_bounce_num=76,
+                                  )
         # 73 -> ball being hit
 
         self.indexes = np.array([value for value in self.ram_locations.values()], dtype=np.int32)
-        self.reversed_indexes = np.array([26, 24, 70, 16, 15, 27, 25, 69, 17, 73], dtype=np.int32)
-        self.centers = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.float32)
-        self.scales = np.array([0.01, 0.01, 0.2, 0.01, 0.01, 0.01, 0.01, 0.2, 0.025, 0.005], dtype=np.float32)
+        self.reversed_indexes = np.array([26, 24, 16, 15, 27, 25, 17, 80, 76], dtype=np.int32)
+        self.centers = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.float32)
+        self.scales = np.array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.025, 1., 0.5], dtype=np.float32)
         self.y_bounds = (0.91, 1.48)
         # 2 - 74 75 - 148
         self.side = True
@@ -34,7 +37,7 @@ class Tennis:
 
         self.action_dim = 9
 
-        self.state_dim_base = len(self.indexes) + 2
+        self.state_dim_base = len(self.indexes)
         self.state_dim_actions = self.state_dim_base + self.action_dim
         self.framestack = framestack
         self.frameskip = frameskip
@@ -68,10 +71,13 @@ class Tennis:
         else:
             indexes = self.reversed_indexes
 
-        reduced = (obs[indexes] - self.centers) * self.scales
-        distance_from_ball = self.distance_from_ball(reduced)
-        return np.concatenate(
-            [reduced, [np.float32(self.side), distance_from_ball]])
+        if obs[self.ram_locations['ball_bounce_num']] > 200:
+            obs[self.ram_locations['ball_bounce_num']] = -1
+        obs[self.ram_locations['ball_bounce_num']] += 1
+
+
+        x = (obs[indexes] - self.centers) * self.scales
+        return x
 
     def distance_from_ball(self, obs):
         return np.sqrt((obs[3] - obs[5]) ** 2 + (obs[4] - obs[6]) ** 2) * 0.9
@@ -160,11 +166,7 @@ class Tennis:
         return dscore
 
     def swap_court(self, full_obs):
-        total = np.sum(full_obs[self.points])
-        if total in self.top_side_points:
-            self.side = True
-        else:
-            self.side = False
+        self.side = full_obs[self.ram_locations['side']] < 1
 
     def step(self, action):
         reward = 0
@@ -173,9 +175,8 @@ class Tennis:
                 self.action_to_id(action))
             reward += rr
 
-        pp_state = self.preprocess(observation)
 
-        while not done and np.max(np.abs(self.state[:self.state_dim_base] - pp_state)) < 1e-5:
+        while not done and observation[75] < 255:
 
             for _ in range(self.frameskip):
                 observation, rr, done, info = self.env.step(
@@ -183,9 +184,9 @@ class Tennis:
                 reward += rr
                 if done:
                     break
-            pp_state = self.preprocess(observation)
 
         self.swap_court(observation)
+        observation = self.preprocess(observation)
 
 
         punish = 0
@@ -200,9 +201,8 @@ class Tennis:
             self.frames_since_point = 0
 
         self.state[self.state_dim_actions:] = self.state[:-self.state_dim_actions]
-        self.state[:self.state_dim_base] = pp_state
-        #if self.is_returning(self.state):
-        #    print('bob returns')
+        self.state[:self.state_dim_base] = observation
+        #print(self.state[self.state_dim_base-2])
         self.state[self.state_dim_base:self.state_dim_actions] = 0.
         self.state[self.state_dim_base+self.past_action] = 1.
 
