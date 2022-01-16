@@ -65,7 +65,6 @@ class TennisRewards:
         self['score'] = base_rewards
         self['efficiency'] = (states[:, 1:, 0] * np.float32(base_rewards > 0)) ** 2
 
-        print(np.mean(self['movement']) * 10)
 
 
         all_wins = np.sum(np.clip(base_rewards, 0., 1.))
