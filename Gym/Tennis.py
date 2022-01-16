@@ -16,16 +16,16 @@ class Tennis:
                                      player_y=24,
                                      #player_score=69,
                                      ball_height=17,
-                                     #ball_direction=73
+                                     ball_hit=73,
                                      side=80,
                                      ball_bounce_num=76,
                                   )
         # 73 -> ball being hit
 
         self.indexes = np.array([value for value in self.ram_locations.values()], dtype=np.int32)
-        self.reversed_indexes = np.array([26, 24, 16, 15, 27, 25, 17, 80, 76], dtype=np.int32)
-        self.centers = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.float32)
-        self.scales = np.array([0.007, 0.007, 0.007, 0.007, 0.007, 0.007, 0.025, 1., 0.5], dtype=np.float32)
+        self.reversed_indexes = np.array([26, 24, 16, 15, 27, 25, 17, 73, 80, 76], dtype=np.int32)
+        self.centers = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.float32)
+        self.scales = np.array([0.007, 0.007, 0.007, 0.007, 0.007, 0.007, 0.025, 0.004, 1., 0.5], dtype=np.float32)
         self.y_bounds = (0.91, 1.48)
         # 2 - 74 75 - 148
         self.side = True
@@ -80,7 +80,7 @@ class Tennis:
         return np.concatenate([[np.clip(1. - self.frames_since_point * 0.0005, 0, 1)], x])
 
     def distance_from_ball(self, obs):
-        return np.sqrt((obs[3] - obs[5]) ** 2 + (obs[4] - obs[6]) ** 2) * 0.9
+        return np.sqrt((obs[4] - obs[6]) ** 2 + (obs[5] - obs[7]) ** 2) * 0.9
 
     def is_back(self, obs):
         # print(np.sqrt((obs[5]-obs[3])**2+(obs[6]-obs[4])**2))
@@ -155,9 +155,8 @@ class Tennis:
         else:
             return (np.abs(0.406 - (obs[6] - 0.014)) / 0.406) ** 2
 
-    def is_returning(self, preprocessed_obs):
-
-        return np.abs(preprocessed_obs[4]-preprocessed_obs[6]) < 0.25 and preprocessed_obs[9] < 0.016 and np.abs(preprocessed_obs[9] - preprocessed_obs[9 + 21]) > 1e-5
+    def is_returning(self, obs):
+        return obs[8] < 3*0.004 and np.abs(obs[4] - obs[6]) < 30 * 0.007 and np.abs(obs[3] - obs[5]) < 30 * 0.007
 
     def win(self, obs, last_obs):
         dself = obs[7] - last_obs[7]
@@ -187,14 +186,15 @@ class Tennis:
 
         self.swap_court(observation)
         observation = self.preprocess(observation)
-
+        if self.is_returning(observation):
+            print(observation[8]/0.004, np.abs(observation[4] - observation[6]), np.abs(observation[3] - observation[5]))
 
         if reward == 0:
                 self.frames_since_point += 1
 
         self.state[self.state_dim_actions:] = self.state[:-self.state_dim_actions]
         self.state[:self.state_dim_base] = observation
-        #print(self.state[self.state_dim_base-2])
+
         self.state[self.state_dim_base:self.state_dim_actions] = 0.
         self.state[self.state_dim_base+self.past_action] = 1.
 
@@ -208,7 +208,7 @@ class Tennis:
         self.past_action = 0
 
     def render(self):
-        time.sleep(0.035)
+        time.sleep(0.08)
         self.env.render()
 
     def compute_stats(self, states, final_states, scores):
