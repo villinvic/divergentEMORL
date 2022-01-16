@@ -37,7 +37,7 @@ class Tennis:
 
         self.action_dim = 9
 
-        self.state_dim_base = len(self.indexes)
+        self.state_dim_base = len(self.indexes) + 1
         self.state_dim_actions = self.state_dim_base + self.action_dim
         self.framestack = framestack
         self.frameskip = frameskip
@@ -77,7 +77,7 @@ class Tennis:
 
 
         x = (obs[indexes] - self.centers) * self.scales
-        return x
+        return np.concatenate([[np.clip(1. - self.frames_since_point * 0.0005, 0, 1)], x])
 
     def distance_from_ball(self, obs):
         return np.sqrt((obs[3] - obs[5]) ** 2 + (obs[4] - obs[6]) ** 2) * 0.9
@@ -189,16 +189,8 @@ class Tennis:
         observation = self.preprocess(observation)
 
 
-        punish = 0
         if reward == 0:
-            if np.abs(self.state[3] - self.state[3 - self.state_dim_actions]) < 1e-4 and \
-                    np.abs(self.state[4] - self.state[4 - self.state_dim_actions]) < 1e-4:
                 self.frames_since_point += 1
-                if self.frames_since_point > 200 // self.frameskip:
-                    punish += 5
-                    done = True
-        else:
-            self.frames_since_point = 0
 
         self.state[self.state_dim_actions:] = self.state[:-self.state_dim_actions]
         self.state[:self.state_dim_base] = observation
@@ -206,7 +198,7 @@ class Tennis:
         self.state[self.state_dim_base:self.state_dim_actions] = 0.
         self.state[self.state_dim_base+self.past_action] = 1.
 
-        return done, reward - punish
+        return done, reward
 
     def reset(self):
         self.env.reset()
