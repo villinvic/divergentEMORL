@@ -25,7 +25,7 @@ class Tennis:
         self.indexes = np.array([value for value in self.ram_locations.values()], dtype=np.int32)
         self.reversed_indexes = np.array([26, 24, 16, 15, 27, 25, 17, 80, 76], dtype=np.int32)
         self.centers = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.float32)
-        self.scales = np.array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.025, 1., 0.5], dtype=np.float32)
+        self.scales = np.array([0.007, 0.007, 0.007, 0.007, 0.007, 0.007, 0.025, 1., 0.5], dtype=np.float32)
         self.y_bounds = (0.91, 1.48)
         # 2 - 74 75 - 148
         self.side = True
