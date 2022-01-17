@@ -208,7 +208,7 @@ class Tennis:
         self.past_action = 0
 
     def render(self):
-        time.sleep(0.08)
+        time.sleep(0.04)
         self.env.render()
 
     def compute_stats(self, states, final_states, scores):
