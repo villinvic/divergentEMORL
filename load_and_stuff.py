@@ -15,8 +15,9 @@ from EMORL.Population import Population
 from EMORL.plotting import plot_stats, heatmap
 # from Game.core import Game
 from pprint import pprint
-from Gym.Boxing import Boxing as Game
+#from Gym.Boxing import Boxing as Game
 #from Gym.Kfm import Kfm as Game
+from Gym.Tennis import Tennis as Game
 from Gym.BoxingMA import BoxingMA as GameMA
 from EMORL.Worker import MeleeWorker
 from Melee.game.console import Console
