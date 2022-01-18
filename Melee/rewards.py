@@ -86,6 +86,7 @@ class Rewards:
         #self.values[:, :] = (1.0 - reward_shape['negative_scale']) * np.maximum(total, 0.) + total
         if np.sum(p0_stocks+p1_stocks) > 0:
             wr = np.sum(p1_stocks) / np.sum((p0_stocks+p1_stocks))
+            wr = wr * 100 - 50
 
         else:
             wr = np.nan
