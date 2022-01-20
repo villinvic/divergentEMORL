@@ -106,8 +106,8 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False):
     if ma:
         game = GameMA()
     else:
-        game = Game()
-        #game = Console(-1, False)
+        #game = Game()
+        game = Console(-1, False)
 
     pop = Population(pop_size, game.state_dim, game.action_dim)
     pop.initialize(trainable=True, batch_dim=(128, 80))
@@ -129,7 +129,7 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False):
         plot_stats(pop, '')
 
     def visualize_pop():
-        #worker = MeleeWorker(0, True)
+        worker = MeleeWorker(0, True)
         for i, individual in enumerate(pop):
             player.set_arena_genes(individual.get_arena_genes())
             if player.genotype['brain'].has_lstm:
@@ -139,8 +139,8 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False):
             pprint(['performance:', individual.performance])
 
 
-            play_episode(game, player, opp_genes=opp_genes if ma else None)
-            #play_melee(worker, player)
+            #play_episode(game, player, opp_genes=opp_genes if ma else None)
+            play_melee(worker, player)
 
     def eval_pop():
 
