@@ -240,7 +240,6 @@ class Hub(Default, Logger):
                 self.compute_div_scores()
                 self.logger.info('Selecting...')
                 self.select()
-                self.population.register_generation()
                 if self.population.checkpoint_index % 10 == 0:
                     self.save()
 

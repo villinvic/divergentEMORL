@@ -82,6 +82,7 @@ class Population:
         self.read_pickled_v(self.individuals[:self.size], params)
 
     def save(self, path):
+        self.population.register_generation()
         for index, individual in enumerate(self):
             with open(path + str(index) + '.pkl',
                       'wb+') as f:
