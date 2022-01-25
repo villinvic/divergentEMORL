@@ -239,8 +239,9 @@ class Hub(Default, Logger):
                 self.compute_embeddings()
                 self.compute_div_scores()
                 self.logger.info('Selecting...')
-                self.select()
-                if self.population.checkpoint_index % 10 == 0:
+                save = self.population.checkpoint_index % 10 == 0
+                self.select(plot=save)
+                if save:
                     self.save()
 
         except KeyboardInterrupt:
@@ -319,7 +320,7 @@ class Hub(Default, Logger):
             self.population[index].div_score = 1-div
             self.perf_and_uniqueness[1, index, 0] = - np.log(div)
 
-    def select(self):
+    def select(self, plot=False):
         index = 0
         for i, pop in enumerate([self.population, self.offspring_pool]):
             for individual in pop:
@@ -357,9 +358,10 @@ class Hub(Default, Logger):
         """
 
         # get stats of selection...
-        full_path = 'checkpoints/' + self.running_instance_id + '/ckpt_' + str(
-            self.population.checkpoint_index) + '/'
-        plot_perf_uniq(self.perf_and_uniqueness[:, :, 0], selected, self.population, full_path)
+        if plot:
+            full_path = 'checkpoints/' + self.running_instance_id + '/ckpt_' + str(
+                self.population.checkpoint_index) + '/'
+            plot_perf_uniq(self.perf_and_uniqueness[:, :, 0], selected, self.population, full_path)
 
         print(self.perf_and_uniqueness[:, selected, 0])
 
