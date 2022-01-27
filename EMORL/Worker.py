@@ -240,12 +240,12 @@ class MeleeWorker(Default):
         t = threading.Thread(target=self.pad.connect)
         t.start()
         self.game.dolphin.run(*self.chars)
-
+        self.exited = False
         frames = 0
         done = False
         result = None
         self.game.state.init()
-        while not done and frames < 7*60*60:
+        while not self.exited and not done and frames < 7*60*60:
             # Player hold a trajectory instance
             # choose action based on state, send to controller
             # data required : time of traj, states, actions, probabilities
@@ -258,8 +258,10 @@ class MeleeWorker(Default):
                 self.pad.pipe.close()
                 time.sleep(1)
                 return self.play_game()
-
-            self.act(self.game.state)
+            try:
+                self.act(self.game.state)
+            except ValueError:
+                pass
             frames += 1
 
         self.finalize(self.game.state)
@@ -276,6 +278,7 @@ class MeleeWorker(Default):
         self.pad.pipe.close()
         print('Arena %d closed' % self.ID)
         sys.exit(0)
+        self.exited = True
 
 
 if __name__ == '__main__':

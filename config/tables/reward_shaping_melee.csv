@@ -1,6 +1,6 @@
 name, lower_bound, higher_bound
-"hit_dmg", 3e-3, 0.03
-"hurt_dmg", 3e-3, 0.03
+"hit_dmg", 2e-3, 0.02
+"hurt_dmg", 2e-3, 0.02
 "kill", 0.5, 2
 "death", 0.5, 2
 "win", 1, 10

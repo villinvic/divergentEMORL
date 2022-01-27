@@ -45,7 +45,6 @@ def play_episode(game, player, opp_genes):
 def play_melee(worker, player, opp_genes=None):
     worker.player.set_arena_genes(player.get_arena_genes())
     worker.play_game()
-    time.sleep(1)
 
 
 def eval_behav(args):
