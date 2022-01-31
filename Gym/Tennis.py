@@ -77,7 +77,7 @@ class Tennis:
 
 
         x = (obs[indexes] - self.centers) * self.scales
-        return np.concatenate([[np.clip(1. - self.frames_since_point * 0.0005, 0, 1)], x])
+        return np.concatenate([[np.clip(1. - self.frames_since_point * 0.001, 0, 1)], x])
 
     def distance_from_ball(self, obs):
         return np.sqrt((obs[4] - obs[6]) ** 2 + (obs[5] - obs[7]) ** 2) * 0.9
