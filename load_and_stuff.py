@@ -69,7 +69,7 @@ def eval_behav(args):
         for i in range(n_games):
             done = False
             while not done:
-                states[state_idx] = game.state
+                states[state_idx, :] = game.state
                 state_idx += 1
                 action_id, distribution, hidden_h, hidden_c = player.policy(game.state)
                 if ma:
@@ -88,8 +88,8 @@ def eval_behav(args):
     except KeyboardInterrupt:
         pass
     stats = game.compute_stats(states[:state_idx], final_states, points)
-    heatmap(game.locations(states[:state_idx][::100]), 'results/', 'location_heatmap_' + str(k), title='Location heatmap for individual ' + str(k))
-    heatmap(game.punch_locations(states[:state_idx]), 'results/', 'punches_heatmap_' + str(k), title='Punches location heatmap for individual ' + str(k))
+    heatmap(game.locations(states[np.random.choice(state_idx, 500, replace=False)]), 'results/', 'location_heatmap_' + str(k), title='Location heatmap for individual ' + str(k))
+    #heatmap(game.punch_locations(states[np.random.choice(state_idx, 500, replace=False)]), 'results/', 'punches_heatmap_' + str(k), title='Punches location heatmap for individual ' + str(k))
 
     print('-------individual', k, '-------')
     pprint(stats)

@@ -139,7 +139,7 @@ def plot_stats(population, path):
 
 def data_coord2view_coord(p, vlen, pmin, pmax):
     dp = pmax - pmin
-    dv = (p - pmin) / (dp * vlen+1e-8)
+    dv = (p - pmin) / dp * vlen
     return dv
 
 def nearest_neighbours(xs, ys, reso, n_neighbours):
@@ -155,30 +155,23 @@ def nearest_neighbours(xs, ys, reso, n_neighbours):
 
             d = np.sqrt(xp**2 + yp**2)
 
-            div = np.sum(d[np.argpartition(d.ravel(), n_neighbours)[:n_neighbours]])
-            if div == 0.:
-                im[y][x] = 1.
-            else:
-                im[y][x] = 1. / (3*(div)**0.33)
+            im[y][x] = 1 / np.sum(d[np.argpartition(d.ravel(), n_neighbours)[:n_neighbours]])
+
+    im = im ** 0.1
 
     return im, extent
 
-def build_heatmap(x, y, s, bins=1000):
-    heatmap, xedges, yedges = np.histogram2d(x, y, bins=bins)
-    heatmap = gaussian_filter(heatmap, sigma=s)
-
-    extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
-    return heatmap.T, extent
 
 def heatmap(trajectory, path, name='heatmap', title='Location heatmap'):
     # traj.shape -> (N, 2)
     x = trajectory[:, 0]
     y = trajectory[:, 1]
     y = np.max(y) - y
-    resolution = 250
+    print(x,y)
+    resolution = 500
     plt.style.use(['science', 'ieee'])
     plt.clf()
-    neighbours = 16
+    neighbours = 64
     im, extent = nearest_neighbours(x, y, resolution, neighbours)
     plt.imshow(im, origin='lower', cmap=cm.jet)
     #plt.xlim(extent[0], extent[1])
