@@ -15,9 +15,9 @@ from EMORL.Population import Population
 from EMORL.plotting import plot_stats, heatmap
 # from Game.core import Game
 from pprint import pprint
-from Gym.Boxing import Boxing as Game
+#from Gym.Boxing import Boxing as Game
 #from Gym.Kfm import Kfm as Game
-#from Gym.Tennis import Tennis as Game
+from Gym.Tennis import Tennis as Game
 from Gym.BoxingMA import BoxingMA as GameMA
 from EMORL.Worker import MeleeWorker
 from Melee.game.console import Console
@@ -112,6 +112,8 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False):
     pop.initialize(trainable=True, batch_dim=(128, 80))
     pop.load(path)
     player = Individual(-1, game.state_dim, game.action_dim, [])
+    hidden_h, hidden_c = player.genotype['brain'].init_body(
+        np.zeros((1, 1, game.state_dim), dtype=np.float32))
     if ma:
         opp = Individual(-1, game.state_dim, game.action_dim, [], trainable=True)
         with open('checkpoints/sample_ma/aggressive_2000.pkl', 'rb') as f:
