@@ -54,7 +54,7 @@ def eval_behav(args):
         opp = Individual(-1, game.state_dim, game.action_dim, [])
         opp.set_arena_genes(ma)
     else:
-        game = Game()
+        game = Game(frameskip=4)
 
     player = Individual(-1, game.state_dim, game.action_dim, [])
     player.set_arena_genes(genotype)
