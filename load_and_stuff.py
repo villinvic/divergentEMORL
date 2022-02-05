@@ -61,7 +61,7 @@ def eval_behav(args):
     print(k)
 
     states = np.empty((1000000, game.state_dim), dtype=np.float32)
-    n_games = 15
+    n_games = 5
     final_states = np.empty((n_games,), dtype=np.int32)
     points = [0,0]
     state_idx = 0
@@ -76,10 +76,10 @@ def eval_behav(args):
                     action_id_opp, _, _, _ = opp.policy(game.opp_state)
                     action_id = [action_id, action_id_opp]
                 done, win = game.step(action_id)
-            if win == 1:
-                points[0] += 1
-            else:
-                points[1] += 1
+                if win == 1:
+                    points[0] += 1
+                elif win == -1:
+                    points[1] += 1
             final_states[i] = state_idx - 1
             print(i)
             game.reset()
@@ -87,16 +87,23 @@ def eval_behav(args):
                 player.genotype['brain'].lstm.reset_states()
     except KeyboardInterrupt:
         pass
+    states = states[:state_idx]
     stats = game.compute_stats(states[:state_idx], final_states, points)
-    heatmap(game.locations(states[np.random.choice(state_idx, 500, replace=False)]), 'results/', 'location_heatmap_' + str(k), title='Location heatmap for individual ' + str(k))
+    top_states = game.where_top(states)
+    bottom_states = game.where_bottom(states)
+    states_hm = np.concatenate([top_states[np.random.choice(len(top_states), min(500, len(top_states)), replace=False)],
+                                bottom_states[np.random.choice(len(bottom_states), min(500, len(bottom_states)), replace=False)]])
+
+    heatmap(game.locations(states_hm), 'results/', 'location_heatmap_' + str(k), title='Location heatmap for individual ' + str(k))
     #heatmap(game.punch_locations(states[np.random.choice(state_idx, 500, replace=False)]), 'results/', 'punches_heatmap_' + str(k), title='Punches location heatmap for individual ' + str(k))
 
     print('-------individual', k, '-------')
     pprint(stats)
+    return stats
 
 
 
-def load_and_stuff(path, pop_size, stuff='plot', ma=False):
+def load_and_stuff(path, pop_size, stuff='plot', ma=False, plot_path=''):
     gpus = tf.config.experimental.list_physical_devices('GPU')
     print(gpus)
     for gpu in gpus:
@@ -105,7 +112,7 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False):
     if ma:
         game = GameMA()
     else:
-        game = Game()
+        game = Game(frameskip=4)
         #game = Console(-1, False)
 
     pop = Population(pop_size, game.state_dim, game.action_dim)
@@ -127,7 +134,7 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False):
 
     def plot():
 
-        plot_stats(pop, '')
+        plot_stats(pop, plot_path)
 
     def visualize_pop():
         #worker = MeleeWorker(0, True)
@@ -147,7 +154,11 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False):
 
         all_genes = [(i, individual.get_arena_genes(), opp_genes) for i, individual in enumerate(pop)]
         with get_context("spawn").Pool() as pool:
-            pool.map(eval_behav, all_genes)
+            x = pool.map(eval_behav, all_genes)
+
+        pprint({
+            i: x[i] for i in range(len(x))
+        })
 
 
 

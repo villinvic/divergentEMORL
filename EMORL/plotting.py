@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from scipy.interpolate import make_interp_spline, BSpline
 import os
 import numpy as np
 import matplotlib.cm as cm
@@ -59,7 +60,7 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, path):
 
 
 def plot_stats(population, path):
-    plt.style.use(['science', 'ieee'])
+    plt.style.use(['science', 'ieee', 'grid'])
     plt.clf()
 
     #x = np.empty((population.size,), dtype=np.float32)
@@ -70,7 +71,7 @@ def plot_stats(population, path):
     dx, dy = 1, 1
     h, w = plt.figaspect(float(dy * r) / float(dx * c))
 
-    fig, plots = plt.subplots(r, c, figsize=(h*4, w*4))
+    #fig, plots = plt.subplots(r, c, figsize=(h*4, w*4))
 
 
 
@@ -79,7 +80,7 @@ def plot_stats(population, path):
             row = index // c
             col = index % c
             index += 1
-            plot = plots[row][col]
+            #plot = plots[row][col]
 
             means = []
             mins = []
@@ -92,14 +93,26 @@ def plot_stats(population, path):
                 mins.append(np.min(x))
                 maxes.append(np.max(x))
 
+            x = np.arange(len(means))
+            xnew = np.linspace(0, len(means), 50)
 
-            plot.plot(np.arange(len(means)), means, label='Mean')
-            plot.plot(np.arange(len(means)), mins, label='Min')
-            plot.plot(np.arange(len(means)), maxes, label='Max')
-            plot.set_ylabel('%s' % name.capitalize().replace('_', ' '))
-            plot.set_xlabel('Iterations')
-            plot.set_yscale('log')
-            plot.legend()
+            spl = make_interp_spline(x, means, k=3)  # type: BSpline
+            means = spl(xnew)
+            spl = make_interp_spline(x, mins, k=3)  # type: BSpline
+            mins = spl(xnew)
+            spl = make_interp_spline(x, maxes, k=3)  # type: BSpline
+            maxes = spl(xnew)
+
+            plt.plot(xnew, means, label='Mean')
+            plt.plot(xnew, mins, label='Min')
+            plt.plot(xnew, maxes, label='Max')
+            plt.ylabel('%s' % name.capitalize().replace('_', ' '))
+            plt.xlabel('Iterations')
+            plt.yscale('log')
+            plt.legend()
+            plt.savefig(path + name + '.png')
+            plt.clf()
+
 
     for name in ['entropy', 'performance']:
         means = []
@@ -109,31 +122,50 @@ def plot_stats(population, path):
         row = index // c
         col = index % c
         index += 1
-        plot = plots[row][col]
+        #plot = plots[row][col]
 
         for generation in population.stats[name]:
+            generation = np.array(generation)
+            mask = np.isfinite(generation)
+            generation[~mask] = np.mean(generation[mask])
+
             means.append(np.nanmean(generation))
             mins.append(np.nanmin(generation))
             maxes.append(np.nanmax(generation))
-        plot.plot(np.arange(len(means)), means, label='Mean')
-        plot.plot(np.arange(len(means)), mins, label='Min')
-        plot.plot(np.arange(len(means)), maxes, label='Max')
-        plot.set_ylabel('%s' % name.capitalize().replace('_', ' '))
-        plot.set_xlabel(r'Iterations')
-        plot.legend()
+
+        x = np.arange(len(means))
+        xnew = np.linspace(0, len(means), 50)
+
+        spl = make_interp_spline(x, means, k=3)  # type: BSpline
+        means = spl(xnew)
+        spl = make_interp_spline(x, mins, k=3)  # type: BSpline
+        mins = spl(xnew)
+        spl = make_interp_spline(x, maxes, k=3)  # type: BSpline
+        maxes = spl(xnew)
+
+
+        plt.plot(np.arange(len(means)), means, label='Mean')
+        plt.plot(np.arange(len(means)), mins, label='Min')
+        plt.plot(np.arange(len(means)), maxes, label='Max')
+        plt.ylabel('%s' % name.capitalize().replace('_', ' '))
+        plt.yscale('linear')
+        plt.xlabel(r'Iterations')
+        plt.legend()
+        plt.savefig(path + name + '.png')
+        plt.clf()
 
     row = index // c
     col = index % c
     index += 1
-    plot = plots[row][col]
 
 
-    plot.plot(np.arange(len(population.stats['diversity'])), population.stats['diversity'], label='Mean')
-    plot.set_ylabel('Diversity')
-    plot.set_xlabel('Iterations')
+    plt.plot(np.arange(len(population.stats['diversity'])), population.stats['diversity'], label='Mean')
+    plt.ylabel('Diversity')
+    plt.xlabel('Iterations')
+    plt.yscale('logit')
 
     print('ok')
-    fig.savefig(path + 'stats.png')
+    plt.savefig(path + 'diversity.png')
 
 
 
@@ -167,18 +199,17 @@ def heatmap(trajectory, path, name='heatmap', title='Location heatmap'):
     x = trajectory[:, 0]
     y = trajectory[:, 1]
     y = np.max(y) - y
-    print(x,y)
     resolution = 500
     plt.style.use(['science', 'ieee'])
     plt.clf()
-    neighbours = 64
+    neighbours = 16
     im, extent = nearest_neighbours(x, y, resolution, neighbours)
     plt.imshow(im, origin='lower', cmap=cm.jet)
     #plt.xlim(extent[0], extent[1])
     #plt.ylim(extent[2], extent[3])
     plt.axis('off')
 
-    plt.title(title)
+    #plt.title(title)
     plt.savefig(path + name+'.png')
     plt.axis('on')
 

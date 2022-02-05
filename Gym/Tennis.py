@@ -177,12 +177,11 @@ class Tennis:
 
         while not done and observation[75] < 255:
 
-            for _ in range(self.frameskip):
-                observation, rr, done, info = self.env.step(
-                    self.action_to_id(action))
-                reward += rr
-                if done:
-                    break
+            observation, rr, done, info = self.env.step(
+                self.action_to_id(action))
+            reward += rr
+            if done:
+                break
 
         self.swap_court(observation)
         observation = self.preprocess(observation)
@@ -215,18 +214,23 @@ class Tennis:
         stats = dict()
         stats['win_rate'] = scores[0] / np.float32(np.sum(scores))
 
-        actions = np.sum(states[:, self.state_dim_base:self.state_dim_actions], axis=0)
-        stats['action_avg_prob'] = actions / np.sum(actions)
-        stats['distance'] = np.mean(np.sqrt((states[:, 0] - states[:, 2])**2 + (states[:, 1] - states[:, 3])**2))
-        stats['avg_timer'] = np.mean(states[final_states, 14])
-        stats['avg_punches'] = np.mean(states[final_states, 4])
-        stats['avg_hurt'] = np.mean(states[final_states, 5])
-        stats['mobility'] = np.mean(np.sqrt((states[1:, 0] - states[:-1, 0])**2 + (states[1:, 1] - states[:-1, 1])**2))
+        stats['avg_x'] = np.mean(states[:, 5]) / self.scales[4]
+        stats['mobility_y'] = np.mean(np.abs((states[1:, 6] - states[:-1, 6]))) / self.scales[5]
+        stats['rally_length'] = np.mean(len(states)/np.sum(scores))
+        stats['mobility_x'] = np.mean(np.abs((states[1:, 5] - states[:-1, 5]))) / self.scales[4]
+        stats['avg_ball_x'] = np.mean(states[:, 3]) / self.scales[2]
+        stats['avg_ball_y'] = np.mean(states[:, 4]) / self.scales[3]
+        stats['dist_from_let'] = np.mean(np.abs(states[:, 6] / self.scales[5] - 74.5))
 
         return stats
 
-
     def locations(self, states):
         return states[:, 5:7]
+
+    def where_top(self, states):
+        return states[np.where(states[:, 6]/self.scales[5] > 74.5)]
+
+    def where_bottom(self, states):
+        return states[np.where(states[:, 6] / self.scales[5] < 74.5)]
 
 

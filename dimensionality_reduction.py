@@ -11,13 +11,16 @@ plt.rcParams["font.family"] = "Times New Roman NN"
 plt.rcParams["font.weight"] = "normal"
 
 datas = []
-colors = ['Blues', 'Oranges']
-include_index = [0, 1, 2, 3, 4] #
+colors = ['Blues', 'Reds']
+include_index = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] #
 d2_datas = []
 d3_datas = []
 targets = [['emogi1.txt', 'emogi2.txt'], ['emorl1.txt', 'emorl2.txt']]
 labels = ['EMOGI-MOP1', 'EMORL-DvD']
-path = 'stats_compare/boxing/'
+path = 'stats_compare/boxing2/'
+
+mins = None
+maxes = None
 
 for t in targets:
     if isinstance(t, list):
@@ -26,7 +29,7 @@ for t in targets:
             with open(path+tt, 'r') as f:
                 x = ast.literal_eval(f.read())
 
-            data = np.zeros((len(x), len(x[1])))
+            data = np.zeros((len(x), len(x[list(x.keys())[0]])))
             for i, xx in enumerate(x):
                 data[i, :] = list(x[xx].values())
             d.append(data)
@@ -39,11 +42,22 @@ for t in targets:
         for i, xx in enumerate(x):
             data[i,:] = list(x[xx].values())
     data = data[:, include_index]
+    if mins is None:
+        mins = np.min(data, axis=0)
+        maxes = np.max(data, axis=0)
+    else:
+        mins = np.minimum(mins, np.min(data, axis=0))
+        maxes = np.maximum(maxes, np.max(data, axis=0))
     #data -= np.min(data, axis=0)[np.newaxis]
     #data = data / np.max(data, axis=0)[np.newaxis]#hyp.normalize(data, normalize='within')
     datas.append(data)
 
+#means = np.mean(np.concatenate(datas), axis=0)
+#std = np.std(np.concatenate(datas), axis=0)
+
 for data in datas:
+    #data = (data - means) / std
+    data = (data - mins) / (maxes-mins)
     d2 = hyp.reduce(data, ndims=2)
     d2_datas.append(d2)
 
@@ -69,7 +83,7 @@ plt.clf()
 fig = plt.figure()
 axd3 = fig.add_subplot(projection='3d')
 
-axd3.view_init(20, 32)
+#axd3.view_init(20, 32)
 #axd3.set_xlabel('Aggressiveness')
 #axd3.set_ylabel('Defensiveness')
 #axd3.set_zlabel('Mobility')

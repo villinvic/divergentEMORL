@@ -115,13 +115,22 @@ class Boxing:
         stats = dict()
         stats['win_rate'] = scores[0] / np.float32(np.sum(scores))
 
-        actions = np.sum(states[:, self.state_dim_base:self.state_dim_actions], axis=0)
-        stats['action_avg_prob'] = actions / np.sum(actions)
         stats['distance'] = np.mean(np.sqrt((states[:, 0] - states[:, 2])**2 + (states[:, 1] - states[:, 3])**2))
         stats['avg_timer'] = np.mean(states[final_states, 14])
         stats['avg_punches'] = np.mean(states[final_states, 4])
         stats['avg_hurt'] = np.mean(states[final_states, 5])
-        stats['mobility'] = np.mean(np.sqrt((states[1:, 0] - states[:-1, 0])**2 + (states[1:, 1] - states[:-1, 1])**2))
+        stats['mobility_x'] = np.mean(np.sqrt((states[1:, 0] - states[:-1, 0])**2))
+        stats['mobility_y'] = np.mean(np.sqrt((states[1:, 1] - states[:-1, 1])**2))
+
+        ds = states[1:] - states[:-1]
+        punches = states[1:][np.where(ds[:, 4] > 0)]
+        stats['avg_punch_x'] = np.mean(punches[:, 0]) / self.scales[0]  + self.centers[0]
+        stats['avg_punch_y'] = np.mean(punches[:, 1]) / self.scales[1]  + self.centers[1]
+        stats['var_punch_x'] = np.var(punches[:, 0]) / self.scales[0]  + self.centers[0]
+        stats['var_punch_y'] = np.var(punches[:, 1]) / self.scales[1]  + self.centers[1]
+
+        stats['avg_x'] = np.mean(states[:, 0]) / self.scales[0] + self.centers[0]
+        stats['avg_y'] = np.mean(states[:, 1]) / self.scales[1] + self.centers[1]
 
         return stats
 
