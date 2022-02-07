@@ -67,8 +67,6 @@ class TennisRewards:
                                                 np.abs(states[:, 1:, 4] - states[:, 1:, 2]) < 30 * 0.007),
                                  np.abs(states[:, 1:, 3] - states[:, 1:, 1]) < 30 * 0.007))
 
-        print(np.mean(self['aim']))
-
         all_wins = np.sum(np.clip(base_rewards, 0., 1.))
         all_points = np.sum(np.abs(base_rewards))
         if all_points == 0:

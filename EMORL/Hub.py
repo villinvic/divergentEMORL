@@ -209,8 +209,14 @@ class Hub(Default, Logger):
             self.train_cntr += 1
             tf.summary.experimental.set_step(self.train_cntr)
 
-            print('train ! R=', self.eval_queue(), ', trend=', self.eval_queue.trend_count,
-                  ', H=', self.offspring_pool[index].mean_entropy, ', alpha=', self.offspring_pool[index].genotype['learning']['entropy_cost'])
+            if self.train_cntr % 10 == 0:
+                print('---------------------------------------------------------------')
+                print('Performance: %.3f' % self.eval_queue(), '| Trend: ', self.eval_queue.trend_count)
+                print('Entropy: %.3f' % self.offspring_pool[index].mean_entropy)
+                print('Experience:')
+                print({k : '%.3f' % v for k,v in self.offspring_pool[index].genotype['experience'].items()})
+                print('Learning:')
+                print({k: '%.3f' % v for k, v in self.offspring_pool[index].genotype['learning'].items()})
 
             self.sample_states(states)
 
