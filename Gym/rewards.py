@@ -63,9 +63,11 @@ class TennisRewards:
                                  np.abs(states[:, 1:, 3] - states[:, 1:, 5]) < 30 * 0.007))
 
         self['score'] = base_rewards
-        self['efficiency'] = - np.float32(np.logical_and(np.logical_and(np.logical_and(states[:, 1:, 8]!=states[:, :-1, 8], (1.-states[:, 1:, 8]) == states[:, 1:, 9]),
+        self['efficiency'] = - np.float32(np.logical_and(np.logical_and(np.logical_and(np.logical_and(np.logical_and(states[:, 1:, 8]!=states[:, :-1, 8], (1.-states[:, 1:, 8]) == states[:, 1:, 9]),
                                                 np.abs(states[:, 1:, 4] - states[:, 1:, 2]) < 30 * 0.007),
-                                 np.abs(states[:, 1:, 3] - states[:, 1:, 1]) < 30 * 0.007))
+                                                np.abs(states[:, 1:, 3] - states[:, 1:, 1]) < 30 * 0.007),
+                                                np.abs(states[:, 1:, 3] - states[:, :-1, 3])+np.abs(states[:, 1:, 4] - states[:, :-1, 4]) < 25 * 0.007),
+                                                np.abs(states[:, :-1, 0] != 0) ))
 
         all_wins = np.sum(np.clip(base_rewards, 0., 1.))
         all_points = np.sum(np.abs(base_rewards))
