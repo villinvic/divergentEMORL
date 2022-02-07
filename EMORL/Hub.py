@@ -214,9 +214,9 @@ class Hub(Default, Logger):
                 print('Performance: %.3f' % self.eval_queue(), '| Trend: ', self.eval_queue.trend_count)
                 print('Entropy: %.3f' % self.offspring_pool[index].mean_entropy)
                 print('Experience:')
-                print({k : '%.3f' % v for k,v in self.offspring_pool[index].genotype['experience'].items()})
+                print({k : '%.5f' % v for k,v in self.offspring_pool[index].genotype['experience'].items()})
                 print('Learning:')
-                print({k: '%.3f' % v for k, v in self.offspring_pool[index].genotype['learning'].items()})
+                print({k: '%.5f' % v for k, v in self.offspring_pool[index].genotype['learning'].items()})
 
             self.sample_states(states)
 
