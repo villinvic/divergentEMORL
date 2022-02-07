@@ -1,5 +1,5 @@
 name, lower_bound, higher_bound
-"movement", 0.0001, 0.01
-"efficiency", 0.03, 2.0
-"score", 0.15, 1.5
-"aim", 0.015, 0.15
+"movement", 0.00001, 0.01
+"efficiency", 0.01, 0.5
+"score", 0.1, 1
+"aim", 0.01, 0.5

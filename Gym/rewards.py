@@ -63,7 +63,9 @@ class TennisRewards:
                                  np.abs(states[:, 1:, 3] - states[:, 1:, 5]) < 30 * 0.007))
 
         self['score'] = base_rewards
-        self['efficiency'] = (states[:, 1:, 0] * np.float32(base_rewards > 0)) ** 2
+        self['efficiency'] = - np.float32(np.logical_and(np.logical_and(np.logical_and(states[:, 1:, 8]!=states[:, :-1, 8], (1.-states[:, 1:, 8]) == states[:, 1:, 9]),
+                                                np.abs(states[:, 1:, 4] - states[:, 1:, 2]) < 30 * 0.007),
+                                 np.abs(states[:, 1:, 3] - states[:, 1:, 1]) < 30 * 0.007))
 
         print(np.mean(self['aim']))
 

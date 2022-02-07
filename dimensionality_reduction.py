@@ -9,15 +9,17 @@ import matplotlib.pyplot as plt
 plt.rcParams.update({"font.size":8})
 plt.rcParams["font.family"] = "Times New Roman NN"
 plt.rcParams["font.weight"] = "normal"
+plt.style.use(['science', 'ieee', 'scatter', 'grid'])
 
 datas = []
 colors = ['Blues', 'Reds']
-include_index = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] #
+#include_index = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+include_index = [0, 1, 2, 3, 4, 5, 6]
 d2_datas = []
 d3_datas = []
-targets = [['emogi1.txt', 'emogi2.txt'], ['emorl1.txt', 'emorl2.txt']]
-labels = ['EMOGI-MOP1', 'EMORL-DvD']
-path = 'stats_compare/boxing2/'
+targets = [['emogi1.txt'], ['emorl1.txt', 'emorl2.txt']]
+labels = ['EMOGI-MOP3', 'EMORL-DvD']
+path = 'stats_compare/tennis1/'
 
 mins = None
 maxes = None
@@ -42,22 +44,26 @@ for t in targets:
         for i, xx in enumerate(x):
             data[i,:] = list(x[xx].values())
     data = data[:, include_index]
+
+    #data -= np.min(data, axis=0)[np.newaxis]
+    #data = data / np.max(data, axis=0)[np.newaxis]#hyp.normalize(data, normalize='within')
+    datas.append(data)
+
+for data in datas:
     if mins is None:
         mins = np.min(data, axis=0)
         maxes = np.max(data, axis=0)
     else:
         mins = np.minimum(mins, np.min(data, axis=0))
         maxes = np.maximum(maxes, np.max(data, axis=0))
-    #data -= np.min(data, axis=0)[np.newaxis]
-    #data = data / np.max(data, axis=0)[np.newaxis]#hyp.normalize(data, normalize='within')
-    datas.append(data)
 
 #means = np.mean(np.concatenate(datas), axis=0)
 #std = np.std(np.concatenate(datas), axis=0)
 
-for data in datas:
+for i, data in enumerate(datas):
     #data = (data - means) / std
     data = (data - mins) / (maxes-mins)
+    datas[i] = data
     d2 = hyp.reduce(data, ndims=2)
     d2_datas.append(d2)
 
@@ -69,15 +75,27 @@ for data in datas:
 for i, data in enumerate(d2_datas):
     plt.scatter(data[:, 0], data[:, 1], label=labels[i] ,marker='v')
 
-
 #plt.xticks([])
 #plt.yticks([])
 #plt.title('Population repartition in the behavior space')
 #plt.xlim(-0.05, 1.05)
 #plt.ylim(-0.05, 1.05)
+
+
 plt.legend()
 plt.draw()
 plt.savefig(path+'2d.png')
+plt.clf()
+
+for i, data in enumerate(datas):
+    mobility = (data[:, 4]**2 + data[:, 5]**2)**0.5 / np.sqrt(2)
+    efficiency = 1-data[:, 6]
+    plt.scatter(efficiency, mobility, label=labels[i] ,marker='v')
+plt.legend()
+plt.xlabel('Aim')
+plt.ylabel('Mobility')
+plt.draw()
+plt.savefig(path+'eff_mob.png')
 plt.clf()
 
 fig = plt.figure()

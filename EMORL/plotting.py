@@ -162,7 +162,7 @@ def plot_stats(population, path):
     plt.plot(np.arange(len(population.stats['diversity'])), population.stats['diversity'], label='Mean')
     plt.ylabel('Diversity')
     plt.xlabel('Iterations')
-    plt.yscale('logit')
+    plt.yscale('log')
 
     print('ok')
     plt.savefig(path + 'diversity.png')

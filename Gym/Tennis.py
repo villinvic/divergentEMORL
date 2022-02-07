@@ -158,6 +158,10 @@ class Tennis:
     def is_returning(self, obs):
         return obs[8]!=obs[8+self.state_dim_actions] and obs[8]==obs[9] and np.abs(obs[4] - obs[6]) < 30 * 0.007 and np.abs(obs[3] - obs[5]) < 30 * 0.007
 
+    def opp_return(self, obs):
+
+        return obs[8]!=obs[8+self.state_dim_actions] and (1-obs[8])==obs[9] and np.abs(obs[4] - obs[2]) < 30 * 0.007 and np.abs(obs[3] - obs[1]) < 30 * 0.007
+
     def win(self, obs, last_obs):
         dself = obs[7] - last_obs[7]
         dopp = obs[2] - last_obs[2]
@@ -194,6 +198,7 @@ class Tennis:
         self.state[:self.state_dim_base] = observation
         #print(self.is_returning(self.state), observation[8], observation[9], np.abs(observation[4] - observation[6]),
         #      np.abs(observation[3] - observation[5]))
+
         self.state[self.state_dim_base:self.state_dim_actions] = 0.
         self.state[self.state_dim_base+self.past_action] = 1.
 

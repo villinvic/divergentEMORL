@@ -15,9 +15,9 @@ from EMORL.Population import Population
 from EMORL.plotting import plot_stats, heatmap
 # from Game.core import Game
 from pprint import pprint
-#from Gym.Boxing import Boxing as Game
+from Gym.Boxing import Boxing as Game
 #from Gym.Kfm import Kfm as Game
-from Gym.Tennis import Tennis as Game
+#from Gym.Tennis import Tennis as Game
 from Gym.BoxingMA import BoxingMA as GameMA
 from EMORL.Worker import MeleeWorker
 from Melee.game.console import Console
@@ -89,11 +89,11 @@ def eval_behav(args):
         pass
     states = states[:state_idx]
     stats = game.compute_stats(states[:state_idx], final_states, points)
-    top_states = game.where_top(states)
-    bottom_states = game.where_bottom(states)
-    states_hm = np.concatenate([top_states[np.random.choice(len(top_states), min(500, len(top_states)), replace=False)],
-                                bottom_states[np.random.choice(len(bottom_states), min(500, len(bottom_states)), replace=False)]])
-
+    #top_states = game.where_top(states)
+    #bottom_states = game.where_bottom(states)
+    #states_hm = np.concatenate([top_states[np.random.choice(len(top_states), min(500, len(top_states)), replace=False)],
+    #                            bottom_states[np.random.choice(len(bottom_states), min(500, len(bottom_states)), replace=False)]])
+    states_hm = states[np.random.choice(state_idx, 1000, replace=False)]
     heatmap(game.locations(states_hm), 'results/', 'location_heatmap_' + str(k), title='Location heatmap for individual ' + str(k))
     #heatmap(game.punch_locations(states[np.random.choice(state_idx, 500, replace=False)]), 'results/', 'punches_heatmap_' + str(k), title='Punches location heatmap for individual ' + str(k))
 
