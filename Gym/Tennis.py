@@ -187,8 +187,6 @@ class Tennis:
             if done:
                 break
 
-        print(observation[18])
-
         self.swap_court(observation)
         observation = self.preprocess(observation)
         #if self.is_returning(observation):
