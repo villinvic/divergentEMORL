@@ -299,7 +299,8 @@ class AC(tf.keras.Model, Default):
                           tf.cast(training_params['gamma'],tf.float32), states, actions, rewards, probs, hidden_states, gpu)
 
         log_name = str(index)
-        print(v_loss, div, mean_entropy, grad_norm, tf.reduce_sum(tf.reduce_mean(rewards, axis=0)))
+        if np.random.random() < 0.02:
+            print(v_loss, div, mean_entropy, grad_norm, tf.reduce_sum(tf.reduce_mean(rewards, axis=0)))
 
         tf.summary.scalar(name=log_name+"/v_loss", data=v_loss)
         tf.summary.scalar(name=log_name+"/min_entropy", data=min_entropy)
