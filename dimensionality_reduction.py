@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 plt.rcParams.update({"font.size":8})
 plt.rcParams["font.family"] = "Times New Roman NN"
 plt.rcParams["font.weight"] = "normal"
-plt.style.use(['science', 'ieee', 'scatter', 'grid'])
+plt.style.use(['science', 'scatter', 'grid'])
 
 datas = []
 colors = ['Blues', 'Reds']
@@ -87,16 +87,28 @@ plt.draw()
 plt.savefig(path+'2d.png')
 plt.clf()
 
+
 for i, data in enumerate(datas):
     mobility = (data[:, 4]**2 + data[:, 5]**2)**0.5 / np.sqrt(2)
     efficiency = 1-data[:, 6]
-    plt.scatter(efficiency, mobility, label=labels[i] ,marker='v')
+    #x = data[:, 2]
+    #let = data[:, 3]
+    #x = data[:, 4]
+    #y = data[:, 7]
+    plt.scatter(mobility, efficiency, label=labels[i] ,marker='v')
 plt.legend()
-plt.xlabel('Aim')
-plt.ylabel('Mobility')
+plt.xlim([-0.05,1.05])
+plt.ylim([-0.05,1.05])
+plt.xticks(np.linspace(0, 1, 5))
+plt.yticks(np.linspace(0, 1, 5))
+plt.ylabel(r'Mobility')
+plt.xlabel(r'Aim')
 plt.draw()
-plt.savefig(path+'eff_mob.png')
+plt.gca().set_aspect('equal', adjustable='box')
+plt.savefig(path+'mob_eff.png', dpi=500)
 plt.clf()
+
+
 
 fig = plt.figure()
 axd3 = fig.add_subplot(projection='3d')

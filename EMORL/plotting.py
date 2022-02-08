@@ -38,7 +38,7 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, path):
     print(selected)
     for case, (div, perf) in cases.items():
         print(case, div)
-        plt.scatter(div, perf, label=case, marker='v')
+        plt.scatter(perf, div, label=case, marker='v')
 
 
     plt.ylabel(r'$\zeta_{perf}(\pi)$')
@@ -57,6 +57,29 @@ def plot_perf_uniq(perf_and_uniqueness, selected, new_pop, path):
     plt.savefig(path+'scatter.png')
 
     plt.clf()
+
+
+def plot_evo(pop, path):
+    plt.style.use(['ieee', 'science', 'scatter', 'grid'])
+    plt.clf()
+
+    perf = np.empty((pop.size,), dtype=np.float32)
+    div = np.empty((pop.size,), dtype=np.float32)
+
+
+
+    for i, inv in enumerate(pop):
+        perf[i] = (inv.performance  + 50 )/100.
+        div[i] = inv.div_score
+
+    plt.scatter(div, perf, marker='v')
+    plt.ylabel(r'$\zeta_{perf}(\pi)$')
+    plt.xlabel(r'$\zeta_{nov}(\pi)$')
+    plt.ylim(-0.05, 1.05)
+    plt.draw()
+    plt.savefig(path + 'evo.png')
+
+
 
 
 def plot_stats(population, path):
@@ -129,6 +152,9 @@ def plot_stats(population, path):
             mask = np.isfinite(generation)
             generation[~mask] = np.mean(generation[mask])
 
+            if name=="performance":
+                generation=(generation + 50) /100.
+
             means.append(np.nanmean(generation))
             mins.append(np.nanmin(generation))
             maxes.append(np.nanmax(generation))
@@ -143,6 +169,8 @@ def plot_stats(population, path):
         spl = make_interp_spline(x, maxes, k=3)  # type: BSpline
         maxes = spl(xnew)
 
+        if name == 'performance':
+            name = 'Winrate'
 
         plt.plot(np.arange(len(means)), means, label='Mean')
         plt.plot(np.arange(len(means)), mins, label='Min')

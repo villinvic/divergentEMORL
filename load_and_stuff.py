@@ -12,7 +12,7 @@ import time
 
 from EMORL.Individual import Individual
 from EMORL.Population import Population
-from EMORL.plotting import plot_stats, heatmap
+from EMORL.plotting import plot_stats, heatmap, plot_evo
 # from Game.core import Game
 from pprint import pprint
 from Gym.Boxing import Boxing as Game
@@ -136,6 +136,9 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False, plot_path=''):
 
         plot_stats(pop, plot_path)
 
+    def evo():
+        plot_evo(pop, plot_path)
+
     def visualize_pop():
         #worker = MeleeWorker(0, True)
         for i, individual in enumerate(pop):
@@ -164,6 +167,7 @@ def load_and_stuff(path, pop_size, stuff='plot', ma=False, plot_path=''):
 
 
     {'plot': plot,
+     'evo': evo,
      'play': visualize_pop,
      'eval': eval_pop
      }[stuff]()
